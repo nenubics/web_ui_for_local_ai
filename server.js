@@ -426,6 +426,181 @@ const MODEL_CATALOG = [
     quant: 'F16',
     description: 'Универсальная многоязычная векторная модель с поддержкой гибридного поиска (dense + sparse) до 8192 токенов.',
     tags: ['embeddings', 'hybrid', 'multilingual']
+  },
+
+  // --- NVIDIA NEMOTRON & AI RESEARCH (2026) ---
+  {
+    id: 'nemotron-mini:4b',
+    name: 'NVIDIA Nemotron-Mini 4B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'NVIDIA 2026',
+    params: '4.1B',
+    size: '2.7 GB',
+    ramMin: '4.5 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Оптимизированная компактная нейросеть от NVIDIA для портативных устройств, голосовых ассистентов и edge-инференса.',
+    tags: ['nvidia', 'nemotron', 'lightweight', 'speed']
+  },
+  {
+    id: 'nemotron-4:15b',
+    name: 'NVIDIA Nemotron-4 15B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'NVIDIA Synthetic SOTA',
+    params: '15.2B',
+    size: '9.4 GB',
+    ramMin: '16 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Модель NVIDIA, обученная на синтетических данных высочайшей чистоты. Превосходная точность в рассуждениях и диалогах.',
+    tags: ['nvidia', 'nemotron', 'chat', '2026']
+  },
+  {
+    id: 'llama-3.1-nemotron:70b',
+    name: 'NVIDIA Nemotron 70B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'NVIDIA Benchmark Leader',
+    params: '70.6B',
+    size: '43 GB',
+    ramMin: '64 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Флагман исследовательского подразделения NVIDIA. Лидер открытых тестов по следованию сложным системным инструкциям.',
+    tags: ['nvidia', 'nemotron', 'frontier', 'heavy']
+  },
+  {
+    id: 'nvlm-16b',
+    name: 'NVIDIA NVLM 16B Vision',
+    category: 'vision',
+    categoryName: 'Мультимодальные',
+    badge: 'NVIDIA Vision',
+    params: '16.1B',
+    size: '10.5 GB',
+    ramMin: '18 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Мультимодальная архитектура NVIDIA с исключительным уровнем чтения графиков, таблиц и OCR документов.',
+    tags: ['nvidia', 'vision', 'multimodal', 'ocr']
+  },
+
+  // --- THUDM GLM-4 & CODEGEEX (ZHIPU AI) ---
+  {
+    id: 'glm-4:9b',
+    name: 'THUDM GLM-4 9B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'GLM Flagship 2026',
+    params: '9.3B',
+    size: '5.8 GB',
+    ramMin: '10 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Флагман открытой серии GLM-4. Контекст до 128k, глубокая мультиязычность (русский, английский, китайский) и Tool Calling.',
+    tags: ['glm', 'thudm', 'chat', 'flagship']
+  },
+  {
+    id: 'glm-edge:4b',
+    name: 'THUDM GLM-Edge 4B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'GLM Edge',
+    params: '4.2B',
+    size: '2.6 GB',
+    ramMin: '4.5 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Компактная версия GLM для работы на локальном кремнии с низким энергопотреблением и моментальным откликом.',
+    tags: ['glm', 'thudm', 'lightweight', 'speed']
+  },
+  {
+    id: 'codegeex-4:9b',
+    name: 'CodeGeeX-4 9B (CodeGLM)',
+    category: 'coding',
+    categoryName: 'Программирование',
+    badge: 'GLM Code Pro',
+    params: '9.4B',
+    size: '5.9 GB',
+    ramMin: '10 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Открытая модель программирования поколения GLM-4. Превосходное понимание структуры репозиториев и автодополнение кода.',
+    tags: ['glm', 'coding', 'codegeex', 'agent']
+  },
+  {
+    id: 'glm-4-voice:9b',
+    name: 'THUDM GLM-4 Voice 9B',
+    category: 'vision',
+    categoryName: 'Мультимодальные',
+    badge: 'GLM Multimodal',
+    params: '9.5B',
+    size: '6.2 GB',
+    ramMin: '11 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Мультимодальная архитектура с одновременной поддержкой визуального анализа, текстового синтеза и транскриптов.',
+    tags: ['glm', 'vision', 'multimodal']
+  },
+
+  // --- COHERE, IBM, UPSTAGE & OPEN-SOURCE FRONTIER ---
+  {
+    id: 'command-r:35b',
+    name: 'Cohere Command R 35B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Cohere Enterprise RAG',
+    params: '35B',
+    size: '21 GB',
+    ramMin: '32 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Специализированная модель Cohere с оптимизацией под Retrieval Augmented Generation (RAG) и работу с документами.',
+    tags: ['cohere', 'rag', 'chat', 'enterprise']
+  },
+  {
+    id: 'deepseek-coder-v2:16b',
+    name: 'DeepSeek Coder V2 16B MoE',
+    category: 'coding',
+    categoryName: 'Программирование',
+    badge: 'MoE Coding 2026',
+    params: '16B MoE (2.4B active)',
+    size: '8.9 GB',
+    ramMin: '12 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Архитектура Mixture-of-Experts: активирует лишь 2.4 млрд параметров для молниеносной генерации и тестов.',
+    tags: ['coding', 'deepseek', 'moe', 'speed']
+  },
+  {
+    id: 'solar-pro:22b',
+    name: 'Upstage Solar Pro 22B',
+    category: 'reasoning',
+    categoryName: 'Рассуждения',
+    badge: 'Upstage SOTA',
+    params: '22B',
+    size: '13.5 GB',
+    ramMin: '20 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Компактный гигант с архитектурой Depth-Up-Scaling. Конкурирует с моделями 70B по качеству решения логических задач.',
+    tags: ['reasoning', 'upstage', 'solar', 'precision']
+  },
+  {
+    id: 'granite-3.1:8b',
+    name: 'IBM Granite 3.1 8B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'IBM Enterprise',
+    params: '8.2B',
+    size: '5.1 GB',
+    ramMin: '9 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Корпоративная открытая модель IBM. Высокие стандарты надежности, строгая безопасность и чистые обучающие данные.',
+    tags: ['ibm', 'granite', 'enterprise', 'chat']
+  },
+  {
+    id: 'minicpm3:4b',
+    name: 'OpenBMB MiniCPM 3 4B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Tiny Power',
+    params: '4.1B',
+    size: '2.5 GB',
+    ramMin: '4 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Рекордная плотность интеллекта на один параметр. Превосходит многие модели 8B при вдвое меньшем расходе памяти.',
+    tags: ['lightweight', 'minicpm', 'speed', 'mobile']
   }
 ];
 
