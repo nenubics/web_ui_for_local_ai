@@ -4,6 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { exec, spawn } = require('node:child_process');
 const { AGENT_ROLES, TOOLS, executeTool, runAgentTask, WORKSPACE_DIR } = require('./agent.js');
+const {
+  DIFFUSION_CATALOG,
+  installedDiffusionModels,
+  generationHistory,
+  checkDiffusionBackends,
+  generateDiffusionImage,
+  installDiffusionModel,
+  deleteDiffusionModel
+} = require('./diffusion.js');
 
 const PORT = process.env.PORT || 3000;
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
@@ -1506,6 +1515,118 @@ const server = http.createServer(async (req, res) => {
       });
 
       res.end();
+    });
+    return;
+  }
+
+  // =========================================================================
+  // DIFFUSION / FLUX & STABLE DIFFUSION API ENDPOINTS
+  // =========================================================================
+
+  // GET /api/diffusion/catalog
+  if (pathname === '/api/diffusion/catalog' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(DIFFUSION_CATALOG));
+    return;
+  }
+
+  // GET /api/diffusion/models
+  if (pathname === '/api/diffusion/models' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(installedDiffusionModels));
+    return;
+  }
+
+  // GET /api/diffusion/backends
+  if (pathname === '/api/diffusion/backends' && req.method === 'GET') {
+    const backends = await checkDiffusionBackends();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(backends));
+    return;
+  }
+
+  // GET /api/diffusion/history
+  if (pathname === '/api/diffusion/history' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(generationHistory));
+    return;
+  }
+
+  // POST /api/diffusion/generate
+  if (pathname === '/api/diffusion/generate' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const result = await generateDiffusionImage(payload);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /api/diffusion/install
+  if (pathname === '/api/diffusion/install' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      let modelId = '';
+      try {
+        const payload = JSON.parse(body || '{}');
+        modelId = payload.model || payload.id;
+      } catch {
+        modelId = parsedUrl.searchParams.get('model');
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+      res.write('\n');
+
+      let percent = 0;
+      const timer = setInterval(() => {
+        percent += 20;
+        if (percent <= 100) {
+          res.write(`data: ${JSON.stringify({
+            status: 'downloading',
+            percent,
+            completed: percent === 100
+          })}\n\n`);
+        } else {
+          clearInterval(timer);
+          installDiffusionModel(modelId);
+          res.write(`data: ${JSON.stringify({ status: 'success', completed: true, model: modelId })}\n\n`);
+          res.end();
+        }
+      }, 200);
+
+      req.on('close', () => clearInterval(timer));
+    });
+    return;
+  }
+
+  // DELETE /api/diffusion/delete
+  if (pathname === '/api/diffusion/delete' && req.method === 'DELETE') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      let modelId = '';
+      try {
+        const payload = JSON.parse(body || '{}');
+        modelId = payload.model || payload.id;
+      } catch {
+        modelId = parsedUrl.searchParams.get('model');
+      }
+      const outcome = deleteDiffusionModel(modelId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(outcome));
     });
     return;
   }

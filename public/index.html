@@ -112,6 +112,15 @@
         </svg>
         Playground Чат
       </button>
+      <button class="nav-tab" data-view="diffusion">
+        <svg class="nav-tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+          <circle cx="9" cy="9" r="2"/>
+          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+        </svg>
+        Картинки (Flux &amp; SD)
+        <span class="nav-badge-pill">DiT &amp; SDXL</span>
+      </button>
     </nav>
 
     <!-- ====================================================================
@@ -640,6 +649,274 @@
               </svg>
             </button>
           </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ====================================================================
+         VIEW 4: FLUX & STABLE DIFFUSION IMAGE STUDIO
+         ==================================================================== -->
+    <main id="view-diffusion" class="tab-view">
+      <!-- Section 1: Backend Connection Banner & Status Bar -->
+      <section class="diffusion-status-bar">
+        <div class="diffusion-backend-pill" id="diffusionBackendPill">
+          <span class="status-dot pulsing" id="diffStatusDot"></span>
+          <span class="status-label" id="diffStatusLabel">Проверка движков генерации...</span>
+        </div>
+        <div class="diffusion-presets-row">
+          <span class="preset-label">Стили промптов:</span>
+          <button class="quick-chip diff-style-chip" data-style="photoreal">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            Фотореализм
+          </button>
+          <button class="quick-chip diff-style-chip" data-style="cyberpunk">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Киберпанк
+          </button>
+          <button class="quick-chip diff-style-chip" data-style="portrait">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Студийный портрет
+          </button>
+          <button class="quick-chip diff-style-chip" data-style="cinematic">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="15" x="2" y="5" rx="2"/><polyline points="2 10 22 10"/></svg>
+            Кинематографичный
+          </button>
+          <button class="quick-chip diff-style-chip" data-style="anime">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+            Аниме / Арт
+          </button>
+        </div>
+      </section>
+
+      <!-- Section 2: Generation Studio Split Layout -->
+      <section class="diffusion-studio-layout">
+        <!-- Left: Control Panel -->
+        <div class="panel-card diff-control-card">
+          <div class="diff-control-header">
+            <h3 class="panel-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -3px; margin-right: 6px; color: var(--accent-rose);">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m4.93 4.93 4.24 4.24"/>
+                <path d="m14.83 9.17 4.24-4.24"/>
+                <path d="m14.83 14.83 4.24 4.24"/>
+                <path d="m9.17 14.83-4.24 4.24"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+              Параметры генерации
+            </h3>
+          </div>
+
+          <!-- Model selector -->
+          <div class="diff-form-group">
+            <label for="diffModelSelect" class="diff-form-label">Модель диффузии:</label>
+            <select id="diffModelSelect" class="select-styled select-full">
+              <option value="flux-1-schnell" selected>FLUX.1 Schnell (12B DiT • 4 шага • SOTA)</option>
+              <option value="flux-1-dev">FLUX.1 Dev (12B DiT • Фотореализм &amp; Текст)</option>
+              <option value="sd-3.5-large">Stable Diffusion 3.5 Large (8B MMDiT)</option>
+              <option value="sd-3.5-medium">Stable Diffusion 3.5 Medium (2.5B MMDiT)</option>
+              <option value="sdxl-base-1.0">SDXL 1.0 Base (3.5B UNet • 1024x1024)</option>
+              <option value="sdxl-turbo">SDXL Turbo (1-2 шага • Real-time)</option>
+              <option value="realistic-vision-v6">Realistic Vision V6.0 B1 (Портреты)</option>
+              <option value="dreamshaper-xl">DreamShaper XL (Концепт-арт &amp; CGI)</option>
+              <option value="sd-1.5">Stable Diffusion 1.5 (Легковесная классика)</option>
+            </select>
+          </div>
+
+          <!-- Prompt -->
+          <div class="diff-form-group">
+            <label for="diffPromptInput" class="diff-form-label">Промпт (Описание сцены):</label>
+            <textarea id="diffPromptInput" rows="3" class="textarea-styled" placeholder="Опишите желаемое изображение подробно (на русском или английском)...">A futuristic cyberpunk laboratory with neon holographic displays, volumetric amber dust, ultra photorealistic 8k octane render</textarea>
+          </div>
+
+          <!-- Negative Prompt -->
+          <div class="diff-form-group">
+            <label for="diffNegPromptInput" class="diff-form-label">Отрицательный промпт (Negative):</label>
+            <textarea id="diffNegPromptInput" rows="2" class="textarea-styled" placeholder="То, чего не должно быть в кадре...">blurry, low quality, artifacts, distorted anatomy, text errors, oversaturated</textarea>
+          </div>
+
+          <!-- Aspect Ratio Presets -->
+          <div class="diff-form-group">
+            <label class="diff-form-label">Формат кадра (Aspect Ratio):</label>
+            <div class="aspect-ratio-buttons" id="aspectRatioButtons">
+              <button class="ratio-btn active" data-w="1024" data-h="1024" data-ratio="1:1">
+                <span class="ratio-preview square"></span>
+                1:1
+              </button>
+              <button class="ratio-btn" data-w="1344" data-h="768" data-ratio="16:9">
+                <span class="ratio-preview landscape"></span>
+                16:9
+              </button>
+              <button class="ratio-btn" data-w="768" data-h="1344" data-ratio="9:16">
+                <span class="ratio-preview portrait"></span>
+                9:16
+              </button>
+              <button class="ratio-btn" data-w="1152" data-h="864" data-ratio="4:3">
+                <span class="ratio-preview four-three"></span>
+                4:3
+              </button>
+              <button class="ratio-btn" data-w="1216" data-h="832" data-ratio="3:2">
+                <span class="ratio-preview three-two"></span>
+                3:2
+              </button>
+            </div>
+          </div>
+
+          <!-- Custom Dimensions -->
+          <div class="diff-grid-2">
+            <div class="diff-item">
+              <div class="diff-header-row">
+                <span class="diff-sublabel">Ширина:</span>
+                <span class="diff-val-badge" id="diffWidthVal">1024px</span>
+              </div>
+              <input type="range" id="diffWidthRange" min="512" max="1536" step="64" value="1024" class="range-styled">
+            </div>
+            <div class="diff-item">
+              <div class="diff-header-row">
+                <span class="diff-sublabel">Высота:</span>
+                <span class="diff-val-badge" id="diffHeightVal">1024px</span>
+              </div>
+              <input type="range" id="diffHeightRange" min="512" max="1536" step="64" value="1024" class="range-styled">
+            </div>
+          </div>
+
+          <!-- Steps & CFG Scale -->
+          <div class="diff-grid-2">
+            <div class="diff-item">
+              <div class="diff-header-row">
+                <span class="diff-sublabel">Шаги (Steps):</span>
+                <span class="diff-val-badge" id="diffStepsVal">4</span>
+              </div>
+              <input type="range" id="diffStepsRange" min="1" max="50" step="1" value="4" class="range-styled">
+            </div>
+            <div class="diff-item">
+              <div class="diff-header-row">
+                <span class="diff-sublabel">CFG Scale:</span>
+                <span class="diff-val-badge" id="diffCfgVal">2.0</span>
+              </div>
+              <input type="range" id="diffCfgRange" min="1.0" max="15.0" step="0.5" value="2.0" class="range-styled">
+            </div>
+          </div>
+
+          <!-- Sampler & Seed -->
+          <div class="diff-grid-2">
+            <div class="diff-item">
+              <span class="diff-sublabel">Сэмплер:</span>
+              <select id="diffSamplerSelect" class="select-styled select-full">
+                <option value="Euler" selected>Euler (Стандарт Flux/SD)</option>
+                <option value="Euler a">Euler Ancestral</option>
+                <option value="DPM++ 2M Karras">DPM++ 2M Karras</option>
+                <option value="DPM++ SDE Karras">DPM++ SDE Karras</option>
+                <option value="DDIM">DDIM</option>
+              </select>
+            </div>
+            <div class="diff-item">
+              <div class="diff-header-row">
+                <span class="diff-sublabel">Зерно (Seed):</span>
+                <label class="diff-random-label">
+                  <input type="checkbox" id="diffRandomSeedToggle" checked>
+                  <span>Случайный</span>
+                </label>
+              </div>
+              <div class="seed-input-wrapper">
+                <input type="number" id="diffSeedInput" class="input-styled" value="42819024" disabled>
+                <button class="btn btn-subtle btn-icon-only" id="diffRerollSeedBtn" title="Случайное зерно">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button class="btn btn-primary btn-generate-image" id="diffGenerateBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            </svg>
+            <span id="diffGenerateBtnText">Сгенерировать изображение</span>
+          </button>
+        </div>
+
+        <!-- Right: Canvas Viewer & Gallery -->
+        <div class="diff-viewer-card">
+          <div class="diff-canvas-area" id="diffCanvasArea">
+            <!-- Active Image View -->
+            <div class="diff-image-wrapper" id="diffImageWrapper">
+              <div class="diff-placeholder" id="diffPlaceholder">
+                <div class="placeholder-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                  </svg>
+                </div>
+                <h4>Холст готов к генерации</h4>
+                <p>Настройте параметры слева или выберите один из стилей промпта сверху и нажмите «Сгенерировать изображение».</p>
+              </div>
+              <img id="diffResultImage" class="diff-result-img hidden" alt="Generated Artwork">
+              <div class="diff-loading-overlay hidden" id="diffLoadingOverlay">
+                <div class="spinner"></div>
+                <div class="loading-label" id="diffLoadingText">Инициализация латентного пространства...</div>
+                <div class="loading-sublabel">Генерация с использованием модели <span id="diffActiveModelName">FLUX.1 Schnell</span></div>
+              </div>
+            </div>
+
+            <!-- Image Actions Bar -->
+            <div class="diff-image-actions hidden" id="diffImageActions">
+              <button class="btn btn-sm btn-subtle" id="diffDownloadBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Скачать PNG
+              </button>
+              <button class="btn btn-sm btn-subtle" id="diffCopyPromptBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+                Копировать промпт
+              </button>
+              <button class="btn btn-sm btn-subtle" id="diffFullscreenBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+                Полный экран
+              </button>
+            </div>
+          </div>
+
+          <!-- Metadata inspection strip -->
+          <div class="diff-meta-strip hidden" id="diffMetaStrip">
+            <div class="meta-tag"><span class="meta-lbl">Модель:</span> <strong id="metaModel">FLUX.1 Schnell</strong></div>
+            <div class="meta-tag"><span class="meta-lbl">Размер:</span> <strong id="metaRes">1024x1024</strong></div>
+            <div class="meta-tag"><span class="meta-lbl">Seed:</span> <strong id="metaSeed">42819024</strong></div>
+            <div class="meta-tag"><span class="meta-lbl">Время:</span> <strong id="metaTime">1.2s</strong></div>
+          </div>
+
+          <!-- History Thumbnails Gallery -->
+          <div class="diff-gallery-section">
+            <div class="gallery-header">
+              <span class="gallery-title">История генераций</span>
+              <span class="badge badge-outline" id="galleryCountBadge">0 изображений</span>
+            </div>
+            <div class="gallery-strip" id="diffGalleryStrip">
+              <div class="empty-gallery-hint">Пока нет сгенерированных изображений</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Diffusion Model Showcase & Management Grid -->
+      <section class="section-container">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-heading">Витрина моделей Flux &amp; Stable Diffusion</h2>
+            <p class="section-subheading">Открытые нейросети для генерации графики, фотореализма, концепт-арта и шрифтов</p>
+          </div>
+        </div>
+
+        <div class="models-grid" id="diffModelsGrid">
+          <!-- Rendered dynamically by app.js -->
         </div>
       </section>
     </main>

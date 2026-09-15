@@ -52,7 +52,15 @@ const state = {
   currentStepWrapper: null,
   modelSelectedQuants: {},
   currentTheme: localStorage.getItem('local_ai_theme') || 'dark',
-  settings: Object.assign({}, DEFAULT_SETTINGS)
+  settings: Object.assign({}, DEFAULT_SETTINGS),
+
+  // Diffusion & Image Generation State
+  diffusionCatalog: [],
+  installedDiffusionModels: [],
+  diffusionBackends: { comfyui: { online: false }, webui: { online: false }, sdCli: { available: false }, activeBackend: 'demo' },
+  diffusionHistory: [],
+  isGeneratingImage: false,
+  currentDiffusionResult: null
 };
 
 // DOM Elements Reference
@@ -174,7 +182,50 @@ const elements = {
   agentStreamContainer: document.getElementById('agentStreamContainer'),
   agentWelcomePlaceholder: document.getElementById('agentWelcomePlaceholder'),
   agentTaskInput: document.getElementById('agentTaskInput'),
-  runAgentBtn: document.getElementById('runAgentBtn')
+  runAgentBtn: document.getElementById('runAgentBtn'),
+
+  // Diffusion / Image Studio Elements
+  diffusionBackendPill: document.getElementById('diffusionBackendPill'),
+  diffStatusDot: document.getElementById('diffStatusDot'),
+  diffStatusLabel: document.getElementById('diffStatusLabel'),
+  diffStyleChips: document.querySelectorAll('.diff-style-chip'),
+  diffModelSelect: document.getElementById('diffModelSelect'),
+  diffPromptInput: document.getElementById('diffPromptInput'),
+  diffNegPromptInput: document.getElementById('diffNegPromptInput'),
+  ratioButtons: document.querySelectorAll('.ratio-btn'),
+  diffWidthRange: document.getElementById('diffWidthRange'),
+  diffWidthVal: document.getElementById('diffWidthVal'),
+  diffHeightRange: document.getElementById('diffHeightRange'),
+  diffHeightVal: document.getElementById('diffHeightVal'),
+  diffStepsRange: document.getElementById('diffStepsRange'),
+  diffStepsVal: document.getElementById('diffStepsVal'),
+  diffCfgRange: document.getElementById('diffCfgRange'),
+  diffCfgVal: document.getElementById('diffCfgVal'),
+  diffSamplerSelect: document.getElementById('diffSamplerSelect'),
+  diffSeedInput: document.getElementById('diffSeedInput'),
+  diffRandomSeedToggle: document.getElementById('diffRandomSeedToggle'),
+  diffRerollSeedBtn: document.getElementById('diffRerollSeedBtn'),
+  diffGenerateBtn: document.getElementById('diffGenerateBtn'),
+  diffGenerateBtnText: document.getElementById('diffGenerateBtnText'),
+  diffCanvasArea: document.getElementById('diffCanvasArea'),
+  diffImageWrapper: document.getElementById('diffImageWrapper'),
+  diffPlaceholder: document.getElementById('diffPlaceholder'),
+  diffResultImage: document.getElementById('diffResultImage'),
+  diffLoadingOverlay: document.getElementById('diffLoadingOverlay'),
+  diffLoadingText: document.getElementById('diffLoadingText'),
+  diffActiveModelName: document.getElementById('diffActiveModelName'),
+  diffImageActions: document.getElementById('diffImageActions'),
+  diffDownloadBtn: document.getElementById('diffDownloadBtn'),
+  diffCopyPromptBtn: document.getElementById('diffCopyPromptBtn'),
+  diffFullscreenBtn: document.getElementById('diffFullscreenBtn'),
+  diffMetaStrip: document.getElementById('diffMetaStrip'),
+  metaModel: document.getElementById('metaModel'),
+  metaRes: document.getElementById('metaRes'),
+  metaSeed: document.getElementById('metaSeed'),
+  metaTime: document.getElementById('metaTime'),
+  galleryCountBadge: document.getElementById('galleryCountBadge'),
+  diffGalleryStrip: document.getElementById('diffGalleryStrip'),
+  diffModelsGrid: document.getElementById('diffModelsGrid')
 };
 
 // Canvas References
@@ -1378,6 +1429,424 @@ function formatMarkdown(text) {
 }
 
 // ============================================================================
+// FLUX & STABLE DIFFUSION IMAGE STUDIO CONTROLLER
+// ============================================================================
+
+async function loadDiffusionCatalog() {
+  try {
+    const res = await fetch('/api/diffusion/catalog');
+    if (res.ok) {
+      state.diffusionCatalog = await res.json();
+      if (elements.diffModelSelect) {
+        elements.diffModelSelect.innerHTML = state.diffusionCatalog.map(m => `
+          <option value="${escapeHtml(m.id)}">${escapeHtml(m.name)} (${escapeHtml(m.arch)} • ${m.defaultSteps} шагов)</option>
+        `).join('');
+      }
+      renderDiffusionModelsGrid();
+    }
+  } catch (err) {
+    console.error('Error loading diffusion catalog:', err);
+  }
+}
+
+async function loadInstalledDiffusionModels() {
+  try {
+    const res = await fetch('/api/diffusion/models');
+    if (res.ok) {
+      state.installedDiffusionModels = await res.json();
+      renderDiffusionModelsGrid();
+    }
+  } catch (err) {
+    console.error('Error loading installed diffusion models:', err);
+  }
+}
+
+async function checkDiffusionBackendsStatus() {
+  try {
+    const res = await fetch('/api/diffusion/backends');
+    if (res.ok) {
+      state.diffusionBackends = await res.json();
+      updateDiffusionBackendUI();
+    }
+  } catch (err) {
+    console.error('Error checking diffusion backends:', err);
+  }
+}
+
+function updateDiffusionBackendUI() {
+  if (!elements.diffStatusDot || !elements.diffStatusLabel) return;
+  const b = state.diffusionBackends;
+  if (b.comfyui && b.comfyui.online) {
+    elements.diffStatusDot.className = 'status-dot';
+    elements.diffStatusDot.style.background = 'var(--accent-emerald)';
+    elements.diffStatusLabel.textContent = 'ComfyUI API: Подключено (порт 8188)';
+  } else if (b.webui && b.webui.online) {
+    elements.diffStatusDot.className = 'status-dot';
+    elements.diffStatusDot.style.background = 'var(--accent-emerald)';
+    elements.diffStatusLabel.textContent = 'SD WebUI / Forge: Подключено (порт 7860)';
+  } else if (b.sdCli && b.sdCli.available) {
+    elements.diffStatusDot.className = 'status-dot';
+    elements.diffStatusDot.style.background = 'var(--accent-cyan)';
+    elements.diffStatusLabel.textContent = 'CLI sd.cpp: Доступен в системе';
+  } else {
+    elements.diffStatusDot.className = 'status-dot pulsing';
+    elements.diffStatusDot.style.background = 'var(--accent-rose)';
+    elements.diffStatusLabel.textContent = 'Автономный генератор (Для весов запустите ComfyUI/WebUI)';
+  }
+}
+
+async function loadDiffusionHistory() {
+  try {
+    const res = await fetch('/api/diffusion/history');
+    if (res.ok) {
+      state.diffusionHistory = await res.json();
+      renderDiffusionGallery();
+    }
+  } catch (err) {
+    console.error('Error loading diffusion history:', err);
+  }
+}
+
+function renderDiffusionGallery() {
+  if (!elements.diffGalleryStrip) return;
+  elements.diffGalleryStrip.innerHTML = '';
+
+  const count = state.diffusionHistory.length;
+  if (elements.galleryCountBadge) {
+    elements.galleryCountBadge.textContent = `${count} ${count === 1 ? 'изображение' : (count > 1 && count < 5 ? 'изображения' : 'изображений')}`;
+  }
+
+  if (count === 0) {
+    elements.diffGalleryStrip.innerHTML = '<div class="empty-gallery-hint">Пока нет сгенерированных изображений</div>';
+    return;
+  }
+
+  state.diffusionHistory.forEach(item => {
+    const thumb = document.createElement('div');
+    thumb.className = `gallery-thumb-item ${state.currentDiffusionResult && state.currentDiffusionResult.id === item.id ? 'active' : ''}`;
+    thumb.title = `${item.model} • ${item.width}x${item.height} • Seed: ${item.seed}`;
+    thumb.innerHTML = `<img src="${item.imageUri}" alt="${escapeHtml(item.prompt)}">`;
+    thumb.addEventListener('click', () => {
+      displayDiffusionResult(item);
+    });
+    elements.diffGalleryStrip.appendChild(thumb);
+  });
+}
+
+function displayDiffusionResult(item) {
+  state.currentDiffusionResult = item;
+  if (elements.diffPlaceholder) elements.diffPlaceholder.classList.add('hidden');
+  if (elements.diffResultImage) {
+    elements.diffResultImage.src = item.imageUri;
+    elements.diffResultImage.classList.remove('hidden');
+  }
+  if (elements.diffImageActions) elements.diffImageActions.classList.remove('hidden');
+  if (elements.diffMetaStrip) elements.diffMetaStrip.classList.remove('hidden');
+
+  if (elements.metaModel) elements.metaModel.textContent = item.model;
+  if (elements.metaRes) elements.metaRes.textContent = `${item.width}x${item.height}`;
+  if (elements.metaSeed) elements.metaSeed.textContent = item.seed;
+  if (elements.metaTime) elements.metaTime.textContent = `${(item.durationMs / 1000).toFixed(1)}s`;
+
+  renderDiffusionGallery();
+}
+
+async function generateImageAction() {
+  if (state.isGeneratingImage) return;
+
+  const model = elements.diffModelSelect ? elements.diffModelSelect.value : 'flux-1-schnell';
+  const prompt = elements.diffPromptInput ? elements.diffPromptInput.value.trim() : '';
+  if (!prompt) {
+    if (elements.diffPromptInput) elements.diffPromptInput.focus();
+    return;
+  }
+
+  const negativePrompt = elements.diffNegPromptInput ? elements.diffNegPromptInput.value.trim() : '';
+  const width = elements.diffWidthRange ? parseInt(elements.diffWidthRange.value, 10) : 1024;
+  const height = elements.diffHeightRange ? parseInt(elements.diffHeightRange.value, 10) : 1024;
+  const steps = elements.diffStepsRange ? parseInt(elements.diffStepsRange.value, 10) : 4;
+  const cfgScale = elements.diffCfgRange ? parseFloat(elements.diffCfgRange.value) : 2.0;
+  const sampler = elements.diffSamplerSelect ? elements.diffSamplerSelect.value : 'Euler';
+
+  let seed = Math.floor(Math.random() * 100000000);
+  if (elements.diffRandomSeedToggle && !elements.diffRandomSeedToggle.checked && elements.diffSeedInput) {
+    seed = parseInt(elements.diffSeedInput.value, 10) || seed;
+  } else if (elements.diffSeedInput) {
+    elements.diffSeedInput.value = seed;
+  }
+
+  state.isGeneratingImage = true;
+  if (elements.diffGenerateBtn) elements.diffGenerateBtn.disabled = true;
+  if (elements.diffGenerateBtnText) elements.diffGenerateBtnText.textContent = 'Генерация...';
+  if (elements.diffLoadingOverlay) elements.diffLoadingOverlay.classList.remove('hidden');
+  if (elements.diffActiveModelName) elements.diffActiveModelName.textContent = model;
+  if (elements.diffLoadingText) elements.diffLoadingText.textContent = 'Инициализация латентного пространства...';
+
+  // Animate progress steps text
+  const stepTexts = [
+    'Вычисление эмбеддингов промпта (CLIP/T5)...',
+    'Диффузионный денойзинг латентов...',
+    'Применение планировщика сэмплинга...',
+    'VAE-декодирование в высокое разрешение...'
+  ];
+  let stepIdx = 0;
+  const progressTimer = setInterval(() => {
+    stepIdx = (stepIdx + 1) % stepTexts.length;
+    if (elements.diffLoadingText) elements.diffLoadingText.textContent = stepTexts[stepIdx];
+  }, 400);
+
+  try {
+    const res = await fetch('/api/diffusion/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        prompt,
+        negativePrompt,
+        width,
+        height,
+        steps,
+        cfgScale,
+        sampler,
+        seed
+      })
+    });
+
+    clearInterval(progressTimer);
+
+    if (res.ok) {
+      const result = await res.json();
+      state.diffusionHistory.unshift(result);
+      if (state.diffusionHistory.length > 50) state.diffusionHistory.pop();
+      displayDiffusionResult(result);
+    } else {
+      const err = await res.json();
+      alert('Ошибка генерации: ' + (err.error || 'Неизвестная ошибка'));
+    }
+  } catch (err) {
+    clearInterval(progressTimer);
+    alert('Сетевая ошибка генератора: ' + err.message);
+  } finally {
+    state.isGeneratingImage = false;
+    if (elements.diffGenerateBtn) elements.diffGenerateBtn.disabled = false;
+    if (elements.diffGenerateBtnText) elements.diffGenerateBtnText.textContent = 'Сгенерировать изображение';
+    if (elements.diffLoadingOverlay) elements.diffLoadingOverlay.classList.add('hidden');
+  }
+}
+
+function renderDiffusionModelsGrid() {
+  if (!elements.diffModelsGrid) return;
+  elements.diffModelsGrid.innerHTML = '';
+
+  state.diffusionCatalog.forEach(model => {
+    const isInstalled = state.installedDiffusionModels.some(m => m.id === model.id);
+    const card = document.createElement('div');
+    card.className = `model-card ${model.category === 'flux' ? 'card-uncensored' : ''}`;
+
+    card.innerHTML = `
+      <div class="model-card-top">
+        <div class="model-title-row">
+          <div class="model-name">${escapeHtml(model.name)}</div>
+          <span class="badge ${model.category === 'flux' ? 'badge-uncensored' : 'badge-outline'}">${escapeHtml(model.badge)}</span>
+        </div>
+        <div class="model-meta-badges">
+          <span class="badge badge-cyan">${escapeHtml(model.arch)}</span>
+          <span class="badge badge-emerald">${escapeHtml(model.vram)}</span>
+          <span class="badge badge-violet">${escapeHtml(model.size)}</span>
+        </div>
+        <p class="model-desc">${escapeHtml(model.description)}</p>
+
+        <div class="model-quant-control" style="margin-top: 10px;">
+          <span class="setting-hint">Рекомендуемое разрешение: <strong>${escapeHtml(model.recommendedRes)}</strong> • Шагов: <strong>${model.defaultSteps}</strong> • CFG: <strong>${model.defaultCfg}</strong></span>
+        </div>
+      </div>
+
+      <div class="model-card-bottom">
+        <div class="model-specs-spec">
+          <span class="model-specs-size">${escapeHtml(model.size)}</span>
+          <span class="model-specs-ram">${escapeHtml(model.vram)}</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          ${isInstalled ? `
+            <button class="btn btn-subtle btn-sm btn-delete-diff" data-id="${escapeHtml(model.id)}" title="Удалить из памяти">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+            </button>
+          ` : ''}
+          <button class="btn btn-install ${isInstalled ? 'btn-installed' : ''}" data-id="${escapeHtml(model.id)}">
+            ${isInstalled
+              ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px; margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Готово к запуску'
+              : 'Установить веса'}
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Install click
+    const installBtn = card.querySelector('.btn-install');
+    installBtn.addEventListener('click', () => {
+      if (isInstalled) {
+        if (elements.diffModelSelect) {
+          elements.diffModelSelect.value = model.id;
+          handleDiffusionModelChange(model.id);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        installDiffusionModelAction(model.id, installBtn);
+      }
+    });
+
+    // Delete click
+    const delBtn = card.querySelector('.btn-delete-diff');
+    if (delBtn) {
+      delBtn.addEventListener('click', () => {
+        deleteDiffusionModelAction(model.id);
+      });
+    }
+
+    elements.diffModelsGrid.appendChild(card);
+  });
+}
+
+async function installDiffusionModelAction(modelId, btnElement) {
+  btnElement.disabled = true;
+  btnElement.textContent = 'Установка... 0%';
+
+  try {
+    const res = await fetch('/api/diffusion/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modelId })
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.percent !== undefined) {
+              btnElement.textContent = `Загрузка весов... ${data.percent}%`;
+            }
+            if (data.completed) {
+              await loadInstalledDiffusionModels();
+            }
+          } catch (e) {}
+        }
+      }
+    }
+  } catch (err) {
+    btnElement.disabled = false;
+    btnElement.textContent = 'Ошибка установки';
+  }
+}
+
+async function deleteDiffusionModelAction(modelId) {
+  try {
+    const res = await fetch('/api/diffusion/delete', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: modelId })
+    });
+    if (res.ok) {
+      await loadInstalledDiffusionModels();
+    }
+  } catch (err) {
+    console.error('Error deleting model:', err);
+  }
+}
+
+function handleDiffusionModelChange(modelId) {
+  const model = state.diffusionCatalog.find(m => m.id === modelId);
+  if (!model) return;
+
+  if (elements.diffStepsRange && elements.diffStepsVal) {
+    elements.diffStepsRange.value = model.defaultSteps;
+    elements.diffStepsVal.textContent = model.defaultSteps;
+  }
+  if (elements.diffCfgRange && elements.diffCfgVal) {
+    elements.diffCfgRange.value = model.defaultCfg;
+    elements.diffCfgVal.textContent = model.defaultCfg.toFixed(1);
+  }
+
+  // Adjust suggested resolution
+  if (model.recommendedRes === '512x512') {
+    setResolution(512, 512, '1:1');
+  } else if (model.recommendedRes === '512x768') {
+    setResolution(512, 768, '9:16');
+  } else {
+    setResolution(1024, 1024, '1:1');
+  }
+}
+
+function setResolution(w, h, ratioStr) {
+  if (elements.diffWidthRange && elements.diffWidthVal) {
+    elements.diffWidthRange.value = w;
+    elements.diffWidthVal.textContent = `${w}px`;
+  }
+  if (elements.diffHeightRange && elements.diffHeightVal) {
+    elements.diffHeightRange.value = h;
+    elements.diffHeightVal.textContent = `${h}px`;
+  }
+  if (elements.ratioButtons) {
+    elements.ratioButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.ratio === ratioStr);
+    });
+  }
+}
+
+function downloadCurrentImage() {
+  if (!state.currentDiffusionResult) return;
+  const item = state.currentDiffusionResult;
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = item.width;
+    canvas.height = item.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, item.width, item.height);
+
+    const a = document.createElement('a');
+    a.download = `${item.model}_${item.seed}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  };
+  img.src = item.imageUri;
+}
+
+function copyCurrentPrompt() {
+  if (!state.currentDiffusionResult || !elements.diffCopyPromptBtn) return;
+  navigator.clipboard.writeText(state.currentDiffusionResult.prompt);
+  const origHtml = elements.diffCopyPromptBtn.innerHTML;
+  elements.diffCopyPromptBtn.textContent = 'Скопировано!';
+  setTimeout(() => {
+    elements.diffCopyPromptBtn.innerHTML = origHtml;
+  }, 1800);
+}
+
+function toggleImageFullscreen() {
+  if (!elements.diffResultImage) return;
+  if (!document.fullscreenElement) {
+    elements.diffResultImage.requestFullscreen().catch(() => {
+      window.open(elements.diffResultImage.src, '_blank');
+    });
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// ============================================================================
 // SETTINGS CONTROLLER (FULL CONFIGURATION MODAL)
 // ============================================================================
 
@@ -1511,6 +1980,9 @@ function switchView(viewName) {
 
   if (viewName === 'dashboard') {
     renderMiniCharts();
+  } else if (viewName === 'diffusion') {
+    checkDiffusionBackendsStatus();
+    loadDiffusionHistory();
   }
 }
 
@@ -1660,6 +2132,108 @@ function initEventListeners() {
     }
   });
 
+  // Diffusion / Image Studio triggers
+  if (elements.diffGenerateBtn) {
+    elements.diffGenerateBtn.addEventListener('click', generateImageAction);
+  }
+
+  if (elements.diffPromptInput) {
+    elements.diffPromptInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        generateImageAction();
+      }
+    });
+  }
+
+  if (elements.diffModelSelect) {
+    elements.diffModelSelect.addEventListener('change', (e) => {
+      handleDiffusionModelChange(e.target.value);
+    });
+  }
+
+  // Sliders
+  if (elements.diffWidthRange && elements.diffWidthVal) {
+    elements.diffWidthRange.addEventListener('input', (e) => {
+      elements.diffWidthVal.textContent = `${e.target.value}px`;
+    });
+  }
+
+  if (elements.diffHeightRange && elements.diffHeightVal) {
+    elements.diffHeightRange.addEventListener('input', (e) => {
+      elements.diffHeightVal.textContent = `${e.target.value}px`;
+    });
+  }
+
+  if (elements.diffStepsRange && elements.diffStepsVal) {
+    elements.diffStepsRange.addEventListener('input', (e) => {
+      elements.diffStepsVal.textContent = e.target.value;
+    });
+  }
+
+  if (elements.diffCfgRange && elements.diffCfgVal) {
+    elements.diffCfgRange.addEventListener('input', (e) => {
+      elements.diffCfgVal.textContent = parseFloat(e.target.value).toFixed(1);
+    });
+  }
+
+  // Aspect ratio presets
+  if (elements.ratioButtons) {
+    elements.ratioButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const w = parseInt(btn.dataset.w, 10);
+        const h = parseInt(btn.dataset.h, 10);
+        const ratio = btn.dataset.ratio;
+        setResolution(w, h, ratio);
+      });
+    });
+  }
+
+  // Style chips
+  if (elements.diffStyleChips) {
+    elements.diffStyleChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const promptToAdd = chip.dataset.prompt;
+        if (!elements.diffPromptInput) return;
+        const current = elements.diffPromptInput.value.trim();
+        if (current) {
+          elements.diffPromptInput.value = `${current}, ${promptToAdd}`;
+        } else {
+          elements.diffPromptInput.value = promptToAdd;
+        }
+      });
+    });
+  }
+
+  // Random seed toggle & reroll
+  if (elements.diffRandomSeedToggle && elements.diffSeedInput) {
+    elements.diffRandomSeedToggle.addEventListener('change', (e) => {
+      elements.diffSeedInput.disabled = e.target.checked;
+    });
+  }
+
+  if (elements.diffRerollSeedBtn && elements.diffSeedInput) {
+    elements.diffRerollSeedBtn.addEventListener('click', () => {
+      const newSeed = Math.floor(Math.random() * 2147483647);
+      elements.diffSeedInput.value = newSeed;
+      if (elements.diffRandomSeedToggle) {
+        elements.diffRandomSeedToggle.checked = false;
+        elements.diffSeedInput.disabled = false;
+      }
+    });
+  }
+
+  // Image actions (download, copy prompt, fullscreen)
+  if (elements.diffDownloadBtn) {
+    elements.diffDownloadBtn.addEventListener('click', downloadCurrentImage);
+  }
+  if (elements.diffCopyPromptBtn) {
+    elements.diffCopyPromptBtn.addEventListener('click', copyCurrentPrompt);
+  }
+  if (elements.diffFullscreenBtn) {
+    elements.diffFullscreenBtn.addEventListener('click', toggleImageFullscreen);
+  }
+
   // Setup modal
   const openModal = () => elements.setupModal.classList.remove('hidden');
   const closeModal = () => elements.setupModal.classList.add('hidden');
@@ -1718,6 +2292,10 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAgentRoles();
   loadModelCatalog();
   loadInstalledModels();
+  loadDiffusionCatalog();
+  loadInstalledDiffusionModels();
+  checkDiffusionBackendsStatus();
+  loadDiffusionHistory();
   connectTelemetry();
   renderMiniCharts();
 });
