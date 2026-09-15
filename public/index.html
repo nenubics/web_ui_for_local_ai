@@ -72,6 +72,15 @@
           <span class="status-label" id="statusLabel">Проверка Ollama...</span>
         </button>
 
+        <!-- Settings Button -->
+        <button class="btn btn-secondary btn-icon-text" id="openSettingsModalBtn" title="Настройки инференса и системы">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Настройки
+        </button>
+
         <!-- Guide Button -->
         <button class="btn btn-secondary btn-icon-text" id="openSetupModalBtn">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -348,6 +357,13 @@
             </svg>
             Все модели
           </button>
+          <button class="tab-btn tab-btn-uncensored" data-category="uncensored">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Без цензуры (Abliterated)
+          </button>
           <button class="tab-btn" data-category="huggingface">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
@@ -457,6 +473,9 @@
               <span class="control-label">Модель:</span>
               <select id="agentModelSelect" class="select-styled">
                 <option value="qwen2.5-coder:7b" selected>Qwen 2.5 Coder 7B (Рекомендуется)</option>
+                <option value="qwen2.5-coder-uncensored:7b">Qwen 2.5 Coder 7B Abliterated (Без цензуры)</option>
+                <option value="dolphin-3:8b">Dolphin 3.0 8B (Uncensored SOTA)</option>
+                <option value="llama-3-uncensored:8b">Llama 3.1 8B Abliterated (Без цензуры)</option>
                 <option value="deepseek-r1:7b">DeepSeek-R1 7B (Reasoning CoT)</option>
                 <option value="qwen2.5-coder:1.5b">Qwen 2.5 Coder 1.5B (Быстрая)</option>
                 <option value="llama3.2:3b">Llama 3.2 3B</option>
@@ -470,7 +489,16 @@
                 <option value="4">4 шага</option>
                 <option value="6" selected>6 шагов</option>
                 <option value="10">10 шагов</option>
+                <option value="15">15 шагов</option>
               </select>
+            </div>
+
+            <div class="agent-selector-group bypass-switch-group" title="Отключение этических фильтров, цензуры и отказов">
+              <span class="control-label">Без цензуры:</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="agentBypassToggle">
+                <span class="slider round"></span>
+              </label>
             </div>
 
             <div class="agent-workspace-pill" id="agentWorkdirBadge">
@@ -575,6 +603,13 @@
                   <!-- Populated dynamically -->
                 </select>
               </div>
+              <div class="bypass-switch-group" title="Режим обхода цензуры (Uncensored / Abliteration)">
+                <span class="selector-label">Без цензуры:</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="chatBypassToggle">
+                  <span class="slider round"></span>
+                </label>
+              </div>
             </div>
             <div class="inference-stats" id="inferenceStats">
               <span class="tps-badge" id="tpsBadge">
@@ -654,6 +689,185 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" id="modalOkBtn">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Settings Modal -->
+  <div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-header">
+        <div class="modal-title-with-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <h3 class="modal-title">Параметры инференса и веб-интерфейса</h3>
+        </div>
+        <button class="btn-close" id="closeSettingsModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body settings-modal-body">
+        <!-- Section 1: Sampling & Generation -->
+        <div class="settings-group">
+          <div class="settings-group-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Параметры семплинга нейросетей (LLM Sampling)
+          </div>
+
+          <div class="settings-grid-2">
+            <!-- Temperature -->
+            <div class="setting-item">
+              <div class="setting-header-row">
+                <label for="settingTemp" class="setting-label">Температура (Temperature):</label>
+                <span class="setting-val-badge" id="settingTempVal">0.70</span>
+              </div>
+              <input type="range" id="settingTemp" min="0.0" max="2.0" step="0.05" value="0.70" class="range-styled">
+              <span class="setting-hint">Низкая (0.2) — точный строгий код, Высокая (1.2) — креативность</span>
+            </div>
+
+            <!-- Top-P -->
+            <div class="setting-item">
+              <div class="setting-header-row">
+                <label for="settingTopP" class="setting-label">Top-P (Nucleus Sampling):</label>
+                <span class="setting-val-badge" id="settingTopPVal">0.90</span>
+              </div>
+              <input type="range" id="settingTopP" min="0.05" max="1.0" step="0.05" value="0.90" class="range-styled">
+              <span class="setting-hint">Вероятностное усечение хвоста распределения токенов</span>
+            </div>
+
+            <!-- Top-K -->
+            <div class="setting-item">
+              <div class="setting-header-row">
+                <label for="settingTopK" class="setting-label">Top-K токенов:</label>
+                <span class="setting-val-badge" id="settingTopKVal">40</span>
+              </div>
+              <input type="range" id="settingTopK" min="1" max="100" step="1" value="40" class="range-styled">
+              <span class="setting-hint">Ограничение пула наиболее вероятных кандидатов (1–100)</span>
+            </div>
+
+            <!-- Repeat Penalty -->
+            <div class="setting-item">
+              <div class="setting-header-row">
+                <label for="settingRepeatPenalty" class="setting-label">Штраф за повторы (Repeat Penalty):</label>
+                <span class="setting-val-badge" id="settingRepeatPenaltyVal">1.10</span>
+              </div>
+              <input type="range" id="settingRepeatPenalty" min="1.0" max="2.0" step="0.05" value="1.10" class="range-styled">
+              <span class="setting-hint">Предотвращает зацикливание фраз (стандарт: 1.1)</span>
+            </div>
+          </div>
+
+          <!-- Context Window -->
+          <div class="setting-item setting-item-full">
+            <label for="settingNumCtx" class="setting-label">Контекстное окно памяти (num_ctx):</label>
+            <select id="settingNumCtx" class="select-styled select-full">
+              <option value="2048">2 048 токенов (Минимальное потребление памяти)</option>
+              <option value="4096">4 096 токенов (Экономный режим)</option>
+              <option value="8192" selected>8 192 токенов (Оптимальный стандарт)</option>
+              <option value="16384">16 384 токенов (Для больших скриптов и диффов)</option>
+              <option value="32768">32 768 токенов (Глубокий анализ проектов)</option>
+              <option value="65536">65 536 токенов (Максимальный контекст)</option>
+              <option value="131072">131 072 токенов (Экстремальный контекст)</option>
+            </select>
+            <span class="setting-hint">Увеличение контекста требует больше видеопамяти VRAM/RAM</span>
+          </div>
+        </div>
+
+        <!-- Section 2: Anti-Refusal & Bypass System Directives -->
+        <div class="settings-group">
+          <div class="settings-group-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Режим полного обхода цензуры и отказов (Anti-Refusal Bypass)
+          </div>
+
+          <div class="setting-item setting-switch-row">
+            <div>
+              <div class="setting-label">Включить режим обхода по умолчанию:</div>
+              <div class="setting-hint">Автоматически активировать отключение фильтров для новых диалогов и агента</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingBypassDefault">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Anti-Refusal Directive -->
+          <div class="setting-item">
+            <label for="settingBypassPrompt" class="setting-label">Директива принудительного снятия ограничений (Bypass Directive):</label>
+            <textarea id="settingBypassPrompt" rows="3" class="textarea-styled" placeholder="Инструкция для переопределения векторов отказа..."></textarea>
+            <span class="setting-hint">Подставляется первым блоком в системный контекст при включенном режиме без цензуры</span>
+          </div>
+
+          <!-- Standard System Prompt -->
+          <div class="setting-item">
+            <label for="settingSystemPrompt" class="setting-label">Стандартный системный промпт (Default System Prompt):</label>
+            <textarea id="settingSystemPrompt" rows="2" class="textarea-styled" placeholder="Стандартная инструкция для ассистента..."></textarea>
+          </div>
+        </div>
+
+        <!-- Section 3: Connection & Agent Settings -->
+        <div class="settings-group">
+          <div class="settings-group-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+              <line x1="6" y1="6" x2="6.01" y2="6"/>
+              <line x1="6" y1="18" x2="6.01" y2="18"/>
+            </svg>
+            Подключение к Ollama и параметры Claude Code Агента
+          </div>
+
+          <div class="settings-grid-2">
+            <div class="setting-item">
+              <label for="settingOllamaHost" class="setting-label">Хост Ollama API:</label>
+              <input type="text" id="settingOllamaHost" class="input-styled" value="http://127.0.0.1:11434" placeholder="http://127.0.0.1:11434">
+              <span class="setting-hint">Локальный или удаленный сетевой адрес сервера Ollama</span>
+            </div>
+
+            <div class="setting-item">
+              <label for="settingAgentMaxSteps" class="setting-label">Макс. шагов агента по умолчанию:</label>
+              <select id="settingAgentMaxSteps" class="select-styled select-full">
+                <option value="4">4 шага (Быстрые задачи)</option>
+                <option value="6" selected>6 шагов (Рекомендуется)</option>
+                <option value="8">8 шагов (Средние проекты)</option>
+                <option value="10">10 шагов (Комплексный рефакторинг)</option>
+                <option value="15">15 шагов (Глубокая разработка)</option>
+              </select>
+              <span class="setting-hint">Лимит автономных итераций выполнения инструментов</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer settings-modal-footer">
+        <div class="settings-feedback hidden" id="settingsFeedback">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Настройки сохранены!
+        </div>
+        <div class="settings-footer-actions">
+          <button class="btn btn-subtle" id="settingsResetBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            По умолчанию
+          </button>
+          <button class="btn btn-primary" id="settingsSaveBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Сохранить настройки
+          </button>
+        </div>
       </div>
     </div>
   </div>
