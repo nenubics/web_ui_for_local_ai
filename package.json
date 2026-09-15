@@ -1,0 +1,14 @@
+{
+  "name": "local-ai-dashboard",
+  "version": "1.0.0",
+  "description": "Minimalist, aesthetic web dashboard for local AI model management and real-time resource monitoring",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["ollama", "local-ai", "dashboard", "monitoring", "llm"],
+  "author": "",
+  "license": "MIT"
+}
