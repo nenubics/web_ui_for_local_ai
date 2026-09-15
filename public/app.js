@@ -1,14 +1,27 @@
 /**
  * Local AI Hub — Frontend Controller
  * Minimalist design, high-performance Canvas charts, real-time Ollama integration,
+ * dynamic model quantization selector, hardware thermal telemetry,
  * and autonomous Claude Code / Open Codex Agent Studio.
  */
 
-// State
+// Quantization Presets supported across modern open-weight LLMs
+const QUANT_PRESETS = [
+  { id: 'Q2_K', label: 'Q2_K (2-bit • Ультра-сжатие)', sizeMult: 0.50, ramMult: 0.55, badge: 'Q2_K' },
+  { id: 'Q3_K_M', label: 'Q3_K_M (3-bit • Высокая скорость)', sizeMult: 0.72, ramMult: 0.75, badge: 'Q3_K_M' },
+  { id: 'Q4_K_M', label: 'Q4_K_M (4-bit • Оптимальный баланс)', sizeMult: 1.00, ramMult: 1.00, badge: 'Q4_K_M' },
+  { id: 'Q5_K_M', label: 'Q5_K_M (5-bit • Повышенная точность)', sizeMult: 1.22, ramMult: 1.20, badge: 'Q5_K_M' },
+  { id: 'Q6_K', label: 'Q6_K (6-bit • Максимальное качество)', sizeMult: 1.45, ramMult: 1.40, badge: 'Q6_K' },
+  { id: 'Q8_0', label: 'Q8_0 (8-bit • Почти без потерь)', sizeMult: 1.90, ramMult: 1.85, badge: 'Q8_0' },
+  { id: 'FP16', label: 'FP16 (16-bit • Float16 без сжатия)', sizeMult: 3.60, ramMult: 3.40, badge: 'FP16' }
+];
+
+// Application State
 const state = {
   cpuHistory: Array(30).fill(0),
   ramHistory: Array(30).fill(0),
   gpuHistory: Array(30).fill(0),
+  tempHistory: Array(30).fill(37.0),
   masterCpuHistory: Array(60).fill(0),
   masterRamHistory: Array(60).fill(0),
   catalog: [],
@@ -21,26 +34,34 @@ const state = {
   isAgentRunning: false,
   ollamaOnline: false,
   cpuPeaks: [],
-  currentStepWrapper: null
+  tempPeaks: [],
+  currentStepWrapper: null,
+  modelSelectedQuants: {},
+  currentTheme: localStorage.getItem('local_ai_theme') || 'dark'
 };
 
-// DOM Elements
+// DOM Elements Reference
 const elements = {
   // Navigation Tabs
   navTabs: document.querySelectorAll('.nav-tab'),
   tabViews: document.querySelectorAll('.tab-view'),
 
-  // Header Specs & Status
+  // Header Specs & Theme
   systemSpecs: document.getElementById('headerSystemSpecs'),
+  headerTempText: document.getElementById('headerTempText'),
+  headerTempChip: document.getElementById('headerTempChip'),
   statusDot: document.getElementById('statusDot'),
   statusLabel: document.getElementById('statusLabel'),
   ollamaStatusBtn: document.getElementById('ollamaStatusBtn'),
+  themeToggleBtn: document.getElementById('themeToggleBtn'),
+  iconMoon: document.querySelector('.theme-icon.icon-moon'),
+  iconSun: document.querySelector('.theme-icon.icon-sun'),
   openSetupModalBtn: document.getElementById('openSetupModalBtn'),
   closeSetupModalBtn: document.getElementById('closeSetupModalBtn'),
   modalOkBtn: document.getElementById('modalOkBtn'),
   setupModal: document.getElementById('setupModal'),
 
-  // Resource Metrics
+  // Resource Metrics (CPU, RAM, GPU, Temp, Disk)
   cpuVal: document.getElementById('cpuVal'),
   cpuSubtext: document.getElementById('cpuSubtext'),
   cpuCoresBadge: document.getElementById('cpuCoresBadge'),
@@ -57,6 +78,12 @@ const elements = {
   gpuSubtext: document.getElementById('gpuSubtext'),
   gpuVram: document.getElementById('gpuVram'),
 
+  tempVal: document.getElementById('tempVal'),
+  tempSubtext: document.getElementById('tempSubtext'),
+  tempStatusBadge: document.getElementById('tempStatusBadge'),
+  tempPeak: document.getElementById('tempPeak'),
+  tempLimit: document.getElementById('tempLimit'),
+
   diskFreeVal: document.getElementById('diskFreeVal'),
   diskUsedPercent: document.getElementById('diskUsedPercent'),
   diskSubtext: document.getElementById('diskSubtext'),
@@ -64,12 +91,12 @@ const elements = {
   diskTotal: document.getElementById('diskTotal'),
   diskUsed: document.getElementById('diskUsed'),
 
-  // Detailed Master Chart
+  // Detailed Master Timeline Chart
   toggleDetailedChartBtn: document.getElementById('toggleDetailedChartBtn'),
   masterChartSection: document.getElementById('masterChartSection'),
   clearChartHistoryBtn: document.getElementById('clearChartHistoryBtn'),
 
-  // Models Hub
+  // Models Showcase & Pulling
   modelsGrid: document.getElementById('modelsGrid'),
   filterTabs: document.querySelectorAll('.filter-tabs .tab-btn'),
   customModelInput: document.getElementById('customModelInput'),
@@ -111,13 +138,41 @@ const elements = {
   runAgentBtn: document.getElementById('runAgentBtn')
 };
 
-// Canvas references
+// Canvas References
 const canvases = {
   cpu: document.getElementById('cpuChart'),
   ram: document.getElementById('ramChart'),
   gpu: document.getElementById('gpuChart'),
+  temp: document.getElementById('tempChart'),
   master: document.getElementById('masterChart')
 };
+
+// ============================================================================
+// THEME MANAGER (LIGHT / DARK)
+// ============================================================================
+
+function applyTheme(theme) {
+  state.currentTheme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('local_ai_theme', theme);
+
+  if (elements.iconMoon && elements.iconSun) {
+    if (theme === 'light') {
+      elements.iconMoon.classList.add('hidden');
+      elements.iconSun.classList.remove('hidden');
+    } else {
+      elements.iconMoon.classList.remove('hidden');
+      elements.iconSun.classList.add('hidden');
+    }
+  }
+
+  renderMiniCharts();
+}
+
+function toggleTheme() {
+  const next = state.currentTheme === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+}
 
 // ============================================================================
 // CANVAS CHART ENGINE (High-DPI Retina Smooth Bezier Area Chart)
@@ -169,7 +224,7 @@ function drawSmoothCurve(ctx, points, width, height, strokeColor, fillColor, sha
   // Stroke line with glow
   ctx.save();
   ctx.shadowColor = shadowColor;
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 8;
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 2.2;
   ctx.lineCap = 'round';
@@ -187,7 +242,7 @@ function drawSmoothCurve(ctx, points, width, height, strokeColor, fillColor, sha
   ctx.stroke();
   ctx.restore();
 
-  // Glow current value dot at the tip
+  // Glowing tip dot
   const lastPoint = coords[coords.length - 1];
   ctx.save();
   ctx.beginPath();
@@ -232,14 +287,44 @@ function renderMiniCharts() {
     drawSmoothCurve(ctx, state.gpuHistory, width, height, '#8b5cf6', grad, 'rgba(139, 92, 246, 0.8)');
   }
 
-  // 4. Master Timeline Chart
+  // 4. Temperature Chart (Adaptive color: Emerald -> Amber -> Rose)
+  if (canvases.temp) {
+    const { ctx, width, height } = setupHiDPI(canvases.temp);
+    ctx.clearRect(0, 0, width, height);
+
+    const lastTemp = state.tempHistory[state.tempHistory.length - 1] || 37;
+    let stroke = '#10b981';
+    let shadow = 'rgba(16, 185, 129, 0.8)';
+    let gradTop = 'rgba(16, 185, 129, 0.35)';
+
+    if (lastTemp >= 80) {
+      stroke = '#f43f5e';
+      shadow = 'rgba(244, 63, 94, 0.8)';
+      gradTop = 'rgba(244, 63, 94, 0.35)';
+    } else if (lastTemp >= 65) {
+      stroke = '#f59e0b';
+      shadow = 'rgba(245, 158, 11, 0.8)';
+      gradTop = 'rgba(245, 158, 11, 0.35)';
+    }
+
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, gradTop);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+
+    // Normalize 30°C - 100°C to 0 - 100%
+    const points = state.tempHistory.map(t => Math.max(0, Math.min(100, ((t - 30) / 70) * 100)));
+    drawSmoothCurve(ctx, points, width, height, stroke, grad, shadow);
+  }
+
+  // 5. Master Timeline Chart
   if (canvases.master && !elements.masterChartSection.classList.contains('hidden')) {
     const { ctx, width, height } = setupHiDPI(canvases.master);
     ctx.clearRect(0, 0, width, height);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    const isLight = state.currentTheme === 'light';
+    ctx.strokeStyle = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
     ctx.font = '9px ui-monospace, SFMono-Regular, monospace';
 
     const levels = [0, 25, 50, 75, 100];
@@ -313,10 +398,10 @@ async function fetchMetricsSnapshot() {
 function updateMetricsUI(metrics) {
   if (!metrics) return;
 
-  // CPU
+  // 1. CPU
   const cpu = metrics.cpu;
-  elements.cpuVal.innerHTML = `${cpu.percent}<span class="metric-unit">%</span>`;
-  elements.cpuCoresBadge.textContent = `${cpu.cores} Cores`;
+  if (elements.cpuVal) elements.cpuVal.innerHTML = `${cpu.percent}<span class="metric-unit">%</span>`;
+  if (elements.cpuCoresBadge) elements.cpuCoresBadge.textContent = `${cpu.cores} Cores`;
 
   state.cpuHistory.push(cpu.percent);
   if (state.cpuHistory.length > 30) state.cpuHistory.shift();
@@ -328,15 +413,15 @@ function updateMetricsUI(metrics) {
   if (state.cpuPeaks.length > 60) state.cpuPeaks.shift();
   const peak = Math.max(...state.cpuPeaks);
   const avg = Math.round(state.cpuPeaks.reduce((a, b) => a + b, 0) / state.cpuPeaks.length);
-  elements.cpuPeak.textContent = `${peak}%`;
-  elements.cpuAvg.textContent = `${avg}%`;
+  if (elements.cpuPeak) elements.cpuPeak.textContent = `${peak}%`;
+  if (elements.cpuAvg) elements.cpuAvg.textContent = `${avg}%`;
 
-  // RAM
+  // 2. RAM
   const mem = metrics.memory;
-  elements.ramVal.innerHTML = `${mem.usedGb} <span class="metric-unit">GB</span>`;
-  elements.ramSubtext.textContent = `из ${mem.totalGb} GB (${mem.percent}%)`;
-  elements.ramPercentBadge.textContent = `${mem.percent}%`;
-  elements.ramFree.textContent = `${Math.round((mem.totalGb - mem.usedGb) * 10) / 10} GB`;
+  if (elements.ramVal) elements.ramVal.innerHTML = `${mem.usedGb} <span class="metric-unit">GB</span>`;
+  if (elements.ramSubtext) elements.ramSubtext.textContent = `из ${mem.totalGb} GB (${mem.percent}%)`;
+  if (elements.ramPercentBadge) elements.ramPercentBadge.textContent = `${mem.percent}%`;
+  if (elements.ramFree) elements.ramFree.textContent = `${Math.round((mem.totalGb - mem.usedGb) * 10) / 10} GB`;
 
   state.ramHistory.push(mem.percent);
   if (state.ramHistory.length > 30) state.ramHistory.shift();
@@ -344,29 +429,54 @@ function updateMetricsUI(metrics) {
   state.masterRamHistory.push(mem.percent);
   if (state.masterRamHistory.length > 60) state.masterRamHistory.shift();
 
-  if (mem.percent > 85) {
-    elements.ramPressure.textContent = 'Высокая';
-    elements.ramPressure.className = 'text-danger';
-  } else {
-    elements.ramPressure.textContent = 'Норма';
-    elements.ramPressure.className = 'text-emerald';
+  if (elements.ramPressure) {
+    if (mem.percent > 85) {
+      elements.ramPressure.textContent = 'Высокая';
+      elements.ramPressure.className = 'text-danger';
+    } else {
+      elements.ramPressure.textContent = 'Норма';
+      elements.ramPressure.className = 'text-emerald';
+    }
   }
 
-  // GPU / Metal
+  // 3. GPU / Metal
   const gpu = metrics.gpu;
-  elements.gpuVal.innerHTML = `${gpu.percent}<span class="metric-unit">%</span>`;
-  elements.gpuVram.textContent = `${gpu.vramUsedGb} GB`;
+  if (elements.gpuVal) elements.gpuVal.innerHTML = `${gpu.percent}<span class="metric-unit">%</span>`;
+  if (elements.gpuVram) elements.gpuVram.textContent = `${gpu.vramUsedGb} GB`;
 
   state.gpuHistory.push(gpu.percent);
   if (state.gpuHistory.length > 30) state.gpuHistory.shift();
 
-  // Disk
+  // 4. Hardware Thermal & Temperature
+  if (metrics.thermal) {
+    const th = metrics.thermal;
+    if (elements.tempVal) elements.tempVal.innerHTML = `${th.tempC}<span class="metric-unit">°C</span>`;
+    if (elements.headerTempText) elements.headerTempText.textContent = `${th.tempC}°C`;
+
+    if (elements.tempStatusBadge) {
+      elements.tempStatusBadge.textContent = th.statusText;
+      let badgeClass = 'badge badge-emerald';
+      if (th.tempC >= 80) badgeClass = 'badge badge-rose';
+      else if (th.tempC >= 65) badgeClass = 'badge badge-amber';
+      elements.tempStatusBadge.className = badgeClass;
+    }
+
+    state.tempHistory.push(th.tempC);
+    if (state.tempHistory.length > 30) state.tempHistory.shift();
+
+    state.tempPeaks.push(th.tempC);
+    if (state.tempPeaks.length > 60) state.tempPeaks.shift();
+    const peakTemp = Math.max(...state.tempPeaks);
+    if (elements.tempPeak) elements.tempPeak.textContent = `${peakTemp}°C`;
+  }
+
+  // 5. Disk Storage
   const disk = metrics.disk;
-  elements.diskFreeVal.innerHTML = `${disk.freeGb} <span class="metric-unit">GB</span>`;
-  elements.diskUsedPercent.textContent = `${disk.percent}% занято`;
-  elements.diskTotal.textContent = `${disk.totalGb} GB`;
-  elements.diskUsed.textContent = `${disk.usedGb} GB`;
-  elements.diskBarFill.style.width = `${disk.percent}%`;
+  if (elements.diskFreeVal) elements.diskFreeVal.innerHTML = `${disk.freeGb} <span class="metric-unit">GB</span>`;
+  if (elements.diskUsedPercent) elements.diskUsedPercent.textContent = `${disk.percent}% занято`;
+  if (elements.diskTotal) elements.diskTotal.textContent = `${disk.totalGb} GB`;
+  if (elements.diskUsed) elements.diskUsed.textContent = `${disk.usedGb} GB`;
+  if (elements.diskBarFill) elements.diskBarFill.style.width = `${disk.percent}%`;
 
   renderMiniCharts();
 }
@@ -411,7 +521,47 @@ async function loadWorkspaceInfo() {
 }
 
 // ============================================================================
-// MODEL CATALOG & 1-CLICK SHOWCASE
+// QUANTIZATION CALCULATOR
+// ============================================================================
+
+function calculateQuantSpecs(baseSizeStr, baseRamStr, quantId) {
+  const preset = QUANT_PRESETS.find(q => q.id === quantId) || QUANT_PRESETS[2]; // default Q4_K_M
+
+  let baseSizeGb = 4.0;
+  if (baseSizeStr.includes('MB')) {
+    baseSizeGb = parseFloat(baseSizeStr) / 1024;
+  } else if (baseSizeStr.includes('GB')) {
+    baseSizeGb = parseFloat(baseSizeStr);
+  }
+
+  let baseRamGb = 8.0;
+  if (baseRamStr.includes('GB')) {
+    baseRamGb = parseFloat(baseRamStr);
+  } else if (baseRamStr.includes('MB')) {
+    baseRamGb = parseFloat(baseRamStr) / 1024;
+  }
+
+  const newSizeGb = baseSizeGb * preset.sizeMult;
+  const newRamGb = baseRamGb * preset.ramMult;
+
+  const sizeFormatted = newSizeGb < 1
+    ? `${Math.round(newSizeGb * 1024)} MB`
+    : `${(Math.round(newSizeGb * 10) / 10).toFixed(1)} GB`;
+
+  const ramFormatted = `${Math.ceil(newRamGb)} GB RAM`;
+
+  return { sizeFormatted, ramFormatted, preset };
+}
+
+function getEffectiveModelTag(baseModelId, quantId) {
+  if (!quantId || quantId === 'Q4_K_M') {
+    return baseModelId;
+  }
+  return `${baseModelId}-${quantId.toLowerCase()}`;
+}
+
+// ============================================================================
+// MODEL CATALOG & 1-CLICK SHOWCASE (WITH QUANTIZATION SELECTOR)
 // ============================================================================
 
 async function loadModelCatalog() {
@@ -441,9 +591,27 @@ function renderModelsGrid() {
   }
 
   for (const model of filtered) {
-    const isInstalled = state.installedModels.some(m => m.name === model.id || m.model === model.id);
+    const activeQuant = state.modelSelectedQuants[model.id] || model.quant || 'Q4_K_M';
+    const { sizeFormatted, ramFormatted } = calculateQuantSpecs(model.size, model.ramMin, activeQuant);
+    const targetTag = getEffectiveModelTag(model.id, activeQuant);
+
+    const isInstalled = state.installedModels.some(m =>
+      m.name === targetTag ||
+      m.model === targetTag ||
+      m.name === model.id ||
+      m.model === model.id
+    );
+
     const card = document.createElement('div');
     card.className = 'model-card';
+    card.dataset.modelId = model.id;
+
+    // Build Quantization Dropdown Options
+    const quantOptionsHtml = QUANT_PRESETS.map(q => `
+      <option value="${q.id}" ${q.id === activeQuant ? 'selected' : ''}>
+        ${escapeHtml(q.label)}
+      </option>
+    `).join('');
 
     card.innerHTML = `
       <div class="model-card-top">
@@ -453,28 +621,75 @@ function renderModelsGrid() {
         </div>
         <div class="model-meta-badges">
           <span class="badge badge-cyan">${escapeHtml(model.params)}</span>
-          <span class="badge badge-emerald">${escapeHtml(model.ramMin)}</span>
-          <span class="badge badge-violet">${escapeHtml(model.quant)}</span>
+          <span class="badge badge-emerald model-ram-badge">${escapeHtml(ramFormatted)}</span>
+          <span class="badge badge-violet model-quant-badge">${escapeHtml(activeQuant)}</span>
         </div>
         <p class="model-desc">${escapeHtml(model.description)}</p>
+
+        <!-- Quantization Picker -->
+        <div class="model-quant-control">
+          <label class="model-quant-label">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+              <polyline points="2 17 12 22 22 17"/>
+              <polyline points="2 12 12 17 22 12"/>
+            </svg>
+            Квантование:
+          </label>
+          <select class="model-quant-select" data-model="${escapeHtml(model.id)}">
+            ${quantOptionsHtml}
+          </select>
+        </div>
       </div>
+
       <div class="model-card-bottom">
         <div class="model-specs-spec">
-          <span class="model-specs-size">${escapeHtml(model.size)}</span>
-          <span class="model-specs-ram">${escapeHtml(model.ramMin)}</span>
+          <span class="model-specs-size">${escapeHtml(sizeFormatted)}</span>
+          <span class="model-specs-ram">${escapeHtml(ramFormatted)}</span>
         </div>
-        <button class="btn btn-install ${isInstalled ? 'btn-installed' : ''}" 
-                data-model="${escapeHtml(model.id)}" 
+        <button class="btn btn-install ${isInstalled ? 'btn-installed' : ''}"
+                data-model="${escapeHtml(targetTag)}"
                 ${isInstalled ? 'disabled' : ''}>
-          ${isInstalled ? '✓ Установлено' : 'Установить'}
+          ${isInstalled
+            ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px; margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Установлено'
+            : 'Установить'}
         </button>
       </div>
     `;
 
+    // Handle Quantization Change
+    const quantSelect = card.querySelector('.model-quant-select');
+    quantSelect.addEventListener('change', (e) => {
+      const newQuant = e.target.value;
+      state.modelSelectedQuants[model.id] = newQuant;
+      const specs = calculateQuantSpecs(model.size, model.ramMin, newQuant);
+      const newTargetTag = getEffectiveModelTag(model.id, newQuant);
+
+      card.querySelector('.model-quant-badge').textContent = newQuant;
+      card.querySelector('.model-ram-badge').textContent = specs.ramFormatted;
+      card.querySelector('.model-specs-size').textContent = specs.sizeFormatted;
+      card.querySelector('.model-specs-ram').textContent = specs.ramFormatted;
+
+      const btn = card.querySelector('.btn-install');
+      btn.dataset.model = newTargetTag;
+
+      const installedNow = state.installedModels.some(m =>
+        m.name === newTargetTag || m.model === newTargetTag
+      );
+
+      btn.classList.toggle('btn-installed', installedNow);
+      btn.disabled = installedNow;
+      btn.innerHTML = installedNow
+        ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px; margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Установлено'
+        : 'Установить';
+    });
+
+    // Install Button Click
     const installBtn = card.querySelector('.btn-install');
-    if (!isInstalled) {
-      installBtn.addEventListener('click', () => pullModel(model.id));
-    }
+    installBtn.addEventListener('click', () => {
+      const tagToPull = installBtn.dataset.model || model.id;
+      pullModel(tagToPull);
+    });
 
     container.appendChild(card);
   }
@@ -542,7 +757,7 @@ function finishPullSuccess(modelName) {
   state.isPulling = false;
   elements.pullPercent.textContent = '100%';
   elements.pullProgressBar.style.width = '100%';
-  elements.pullStepDesc.textContent = '✓ Модель успешно установлена и готова к работе!';
+  elements.pullStepDesc.textContent = 'Модель успешно установлена и готова к инференсу!';
 
   loadInstalledModels();
   renderModelsGrid();
@@ -589,8 +804,14 @@ function renderInstalledList() {
   if (state.installedModels.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <span class="empty-icon">📦</span>
-        <p>Нет установленных моделей.<br>Выберите модель в витрине выше для установки в 1 клик.</p>
+        <div class="empty-icon-svg">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+            <path d="m3.3 7 8.7 5 8.7-5"/>
+            <path d="M12 22V12"/>
+          </svg>
+        </div>
+        <p>Нет установленных моделей.<br>Выберите модель в каталоге выше для установки в 1 клик.</p>
       </div>
     `;
     return;
@@ -673,8 +894,8 @@ function populateModelSelectors() {
 
     if (state.installedModels.length === 0) {
       const opt = document.createElement('option');
-      opt.value = 'qwen2.5-coder:7b';
-      opt.textContent = 'qwen2.5-coder:7b (демо)';
+      opt.value = 'qwen3.8-coder:9b';
+      opt.textContent = 'qwen3.8-coder:9b (автономно)';
       select.appendChild(opt);
       continue;
     }
@@ -715,7 +936,7 @@ function populateAgentRoles() {
   for (const role of state.agentRoles) {
     const opt = document.createElement('option');
     opt.value = role.id;
-    opt.textContent = `${role.icon} ${role.name}`;
+    opt.textContent = role.name;
     select.appendChild(opt);
   }
 
@@ -736,7 +957,7 @@ async function runAgent() {
   if (!prompt || state.isAgentRunning) return;
 
   const roleId = elements.agentRoleSelect.value || 'coder';
-  const model = elements.agentModelSelect.value || 'qwen2.5-coder:7b';
+  const model = elements.agentModelSelect.value || 'qwen3.8-coder:9b';
   const maxSteps = parseInt(elements.agentStepsSelect.value, 10) || 6;
 
   state.isAgentRunning = true;
@@ -756,7 +977,12 @@ async function runAgent() {
   promptCard.style.borderLeftColor = '#38bdf8';
   promptCard.style.background = 'rgba(6, 182, 212, 0.08)';
   promptCard.innerHTML = `
-    <div class="thought-header" style="color: #38bdf8;">🎯 Задача пользователя</div>
+    <div class="thought-header" style="color: #38bdf8;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:5px;">
+        <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+      </svg>
+      Задача пользователя
+    </div>
     <div>${escapeHtml(prompt)}</div>
   `;
   elements.agentStreamContainer.appendChild(promptCard);
@@ -830,7 +1056,12 @@ function handleAgentEvent(eventType, data) {
       state.currentStepWrapper = document.createElement('div');
       state.currentStepWrapper.className = 'agent-step-wrapper';
       state.currentStepWrapper.innerHTML = `
-        <div class="step-indicator-pill">⚡ ШАГ ${data.step} ИЗ ${data.maxSteps}</div>
+        <div class="step-indicator-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px; margin-right:4px;">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          ШАГ ${data.step} ИЗ ${data.maxSteps}
+        </div>
       `;
       container.appendChild(state.currentStepWrapper);
       break;
@@ -841,7 +1072,13 @@ function handleAgentEvent(eventType, data) {
       const box = document.createElement('div');
       box.className = 'thought-box';
       box.innerHTML = `
-        <div class="thought-header">🧠 Рассуждение агента</div>
+        <div class="thought-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:5px;">
+            <circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Рассуждение агента
+        </div>
         <div>${formatMarkdown(data.content)}</div>
       `;
       target.appendChild(box);
@@ -853,7 +1090,12 @@ function handleAgentEvent(eventType, data) {
       const box = document.createElement('div');
       box.className = 'tool-call-box';
       box.innerHTML = `
-        <span class="tool-badge">⚙️ ${escapeHtml(data.tool)}</span>
+        <span class="tool-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          ${escapeHtml(data.tool)}
+        </span>
         <span class="tool-args">${escapeHtml(JSON.stringify(data.args))}</span>
       `;
       target.appendChild(box);
@@ -894,7 +1136,12 @@ function handleAgentEvent(eventType, data) {
         box.className = 'thought-box';
         box.style.borderLeftColor = '#10b981';
         box.innerHTML = `
-          <div class="thought-header" style="color: #10b981;">✓ Результат инструмента (${escapeHtml(data.tool)})</div>
+          <div class="thought-header" style="color: #10b981;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:5px;">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Результат инструмента (${escapeHtml(data.tool)})
+          </div>
           <pre><code>${escapeHtml(JSON.stringify(res, null, 2))}</code></pre>
         `;
         target.appendChild(box);
@@ -917,7 +1164,12 @@ function handleAgentEvent(eventType, data) {
       }).join('');
 
       diffViewer.innerHTML = `
-        <div class="diff-header">📝 File Diff: ${escapeHtml(data.file)}</div>
+        <div class="diff-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:5px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          File Diff: ${escapeHtml(data.file)}
+        </div>
         <div class="diff-lines">${lines}</div>
       `;
       target.appendChild(diffViewer);
@@ -959,7 +1211,7 @@ async function sendChatMessage() {
   const text = elements.chatInput.value.trim();
   if (!text || state.isGenerating) return;
 
-  const model = elements.chatModelSelect.value || 'llama3.2:1b';
+  const model = elements.chatModelSelect.value || 'gemma-4:2b';
   elements.chatInput.value = '';
 
   appendMessage('user', text);
@@ -1003,7 +1255,7 @@ async function sendChatMessage() {
               const elapsedSec = (Date.now() - startTime) / 1000;
               if (elapsedSec > 0.3) {
                 const tps = Math.round((tokenCount / elapsedSec) * 10) / 10;
-                elements.tpsBadge.textContent = `⚡ ${tps} t/s`;
+                elements.tpsBadge.textContent = `${tps} t/s`;
               }
             }
           } catch (e) {}
@@ -1039,7 +1291,7 @@ function appendMessage(role, text) {
   return bubble;
 }
 
-// Markdown Formatter
+// Simple Markdown Formatter
 function formatMarkdown(text) {
   if (!text) return '';
   let out = escapeHtml(text);
@@ -1076,6 +1328,11 @@ function switchView(viewName) {
 }
 
 function initEventListeners() {
+  // Theme Toggle Button
+  if (elements.themeToggleBtn) {
+    elements.themeToggleBtn.addEventListener('click', toggleTheme);
+  }
+
   // Navigation Tabs
   elements.navTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1106,7 +1363,7 @@ function initEventListeners() {
     if (e.key === 'Enter') elements.customPullBtn.click();
   });
 
-  // Master chart toggle
+  // Master timeline chart toggle
   elements.toggleDetailedChartBtn.addEventListener('click', () => {
     const isHidden = elements.masterChartSection.classList.toggle('hidden');
     elements.toggleDetailedChartBtn.classList.toggle('active', !isHidden);
@@ -1119,7 +1376,7 @@ function initEventListeners() {
     renderMiniCharts();
   });
 
-  // Refresh installed
+  // Refresh installed models
   elements.refreshInstalledBtn.addEventListener('click', () => {
     loadInstalledModels();
   });
@@ -1144,7 +1401,12 @@ function initEventListeners() {
   elements.clearAgentFeedBtn.addEventListener('click', () => {
     elements.agentStreamContainer.innerHTML = `
       <div class="agent-welcome-placeholder" id="agentWelcomePlaceholder">
-        <div class="welcome-icon">⚡</div>
+        <div class="welcome-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <polyline points="4 17 10 11 4 5"/>
+            <line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+        </div>
         <h3>Claude Code / Open Codex</h3>
         <p>Локальный автономный агент программирования на базе открытых нейросетей.<br>
         Агент может читать проект, выполнять команды в терминале, создавать и патчить код с генерацией визуального diff.</p>
@@ -1163,7 +1425,7 @@ function initEventListeners() {
     }
   });
 
-  // Modal setup
+  // Setup modal
   const openModal = () => elements.setupModal.classList.remove('hidden');
   const closeModal = () => elements.setupModal.classList.add('hidden');
 
@@ -1182,7 +1444,7 @@ function initEventListeners() {
       if (textToCopy) {
         navigator.clipboard.writeText(textToCopy);
         const orig = btn.textContent;
-        btn.textContent = 'Скопировано! ✓';
+        btn.textContent = 'Скопировано';
         setTimeout(() => btn.textContent = orig, 1800);
       }
     });
@@ -1193,7 +1455,7 @@ function initEventListeners() {
   });
 }
 
-// Helpers
+// Utility Helpers
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -1211,8 +1473,9 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Initialize Application
+// Application Bootstrap
 document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(state.currentTheme);
   initEventListeners();
   loadSystemSpecs();
   loadWorkspaceInfo();

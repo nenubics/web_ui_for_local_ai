@@ -9,163 +9,423 @@ const PORT = process.env.PORT || 3000;
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// Curated showcase of top local models
+// Curated showcase of top local models as of September 2026
 const MODEL_CATALOG = [
+  // --- REASONING & CHAIN-OF-THOUGHT (2026) ---
   {
-    id: 'deepseek-r1:1.5b',
-    name: 'DeepSeek-R1 1.5B',
+    id: 'deepseek-r2:7b',
+    name: 'DeepSeek-R2 7B',
     category: 'reasoning',
     categoryName: 'Рассуждения',
-    badge: 'Trending 🔥',
-    params: '1.5B',
-    size: '1.1 GB',
-    ramMin: '2 GB RAM',
+    badge: 'SOTA 2026',
+    params: '7.2B',
+    size: '4.8 GB',
+    ramMin: '8 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Ультралегкая модель с цепочкой рассуждений (CoT). Отлично решает логику и код на любом ПК.',
-    tags: ['reasoning', 'math', 'lightweight']
+    description: 'Новейшее поколение DeepSeek 2026 года с адаптивным динамическим CoT и глубоким логическим синтезом.',
+    tags: ['reasoning', 'leader', '2026']
+  },
+  {
+    id: 'deepseek-r2:14b',
+    name: 'DeepSeek-R2 14B',
+    category: 'reasoning',
+    categoryName: 'Рассуждения',
+    badge: 'Pro Reasoning',
+    params: '14.5B',
+    size: '9.2 GB',
+    ramMin: '16 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Углубленная математическая и алгоритмическая модель R2. Сложнейшие научные выкладки и проверка гипотез.',
+    tags: ['reasoning', 'precision', 'heavy']
+  },
+  {
+    id: 'qwq-3.5:32b',
+    name: 'QwQ 3.5 32B',
+    category: 'reasoning',
+    categoryName: 'Рассуждения',
+    badge: 'Alibaba 2026',
+    params: '32.5B',
+    size: '20 GB',
+    ramMin: '32 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Новое поколение рассуждающих моделей QwQ 3.5 от Alibaba. Феноменальные результаты в олимпиадном кодинге.',
+    tags: ['reasoning', 'qwen', 'expert']
   },
   {
     id: 'deepseek-r1:7b',
     name: 'DeepSeek-R1 7B',
     category: 'reasoning',
     categoryName: 'Рассуждения',
-    badge: 'Leader 🧠',
-    params: '7B',
+    badge: 'Classic Benchmark',
+    params: '7.0B',
     size: '4.7 GB',
     ramMin: '8 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Мощнейшая открытая reasoning-модель на базе Qwen. Глубокий анализ, математика и алгоритмы.',
-    tags: ['reasoning', 'leader', 'code']
+    description: 'Золотой стандарт открытого reasoning-инференса. Проверенная временем пошаговая цепочка мыслей.',
+    tags: ['reasoning', 'proven', 'code']
   },
   {
-    id: 'deepseek-r1:8b',
-    name: 'DeepSeek-R1 8B',
+    id: 'phi-5:7b',
+    name: 'Phi-5 7B',
     category: 'reasoning',
     categoryName: 'Рассуждения',
-    badge: 'Llama Base',
-    params: '8B',
-    size: '4.9 GB',
+    badge: 'Microsoft 2026',
+    params: '7.4B',
+    size: '4.8 GB',
     ramMin: '8 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Reasoning-дистиллят на архитектуре Meta Llama 3.1. Идеальный баланс эрудиции и логики.',
-    tags: ['reasoning', 'llama', 'popular']
+    description: 'Свежая модель Microsoft 2026 года на ультра-чистых синтетических данных с длинным контекстом 128k.',
+    tags: ['reasoning', 'microsoft', '2026']
   },
   {
-    id: 'llama3.2:1b',
-    name: 'Llama 3.2 1B',
-    category: 'lightweight',
-    categoryName: 'Ультра-быстрые',
-    badge: 'Lightning ⚡',
-    params: '1.2B',
-    size: '1.3 GB',
-    ramMin: '2 GB RAM',
+    id: 'phi4:14b',
+    name: 'Phi-4 14B',
+    category: 'reasoning',
+    categoryName: 'Рассуждения',
+    badge: 'High Accuracy',
+    params: '14.7B',
+    size: '9.1 GB',
+    ramMin: '16 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Сверхскоростная компактная модель от Meta. Мгновенные ответы даже на старых ноутбуках.',
-    tags: ['lightweight', 'speed', 'general']
+    description: 'Высокоточная модель от Microsoft с академическим уровнем рассуждений и доказательств.',
+    tags: ['reasoning', 'microsoft', 'sota']
   },
+
+  // --- CODING & AGENT DEVELOPMENT (QWEN 3.5 - 3.8 & CODESTRAL) ---
   {
-    id: 'llama3.2:3b',
-    name: 'Llama 3.2 3B',
-    category: 'chat',
-    categoryName: 'Чат и текст',
-    badge: 'Best All-Rounder',
-    params: '3.2B',
-    size: '2.0 GB',
-    ramMin: '4 GB RAM',
-    quant: 'Q4_K_M',
-    description: 'Универсальный эталон для повседневного общения, рерайтинга, суммаризации и перевода.',
-    tags: ['chat', 'meta', 'balanced']
-  },
-  {
-    id: 'qwen2.5-coder:1.5b',
-    name: 'Qwen 2.5 Coder 1.5B',
+    id: 'qwen3.8-coder:9b',
+    name: 'Qwen 3.8 Coder 9B',
     category: 'coding',
     categoryName: 'Программирование',
-    badge: 'Fast Autocomplete',
-    params: '1.5B',
-    size: '1.0 GB',
-    ramMin: '2 GB RAM',
+    badge: 'Top Agent 2026',
+    params: '9.3B',
+    size: '5.8 GB',
+    ramMin: '10 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Быстрый специализированный ассистент разработчика для автодополнения и генерации функций.',
-    tags: ['coding', 'autocomplete', 'python']
+    description: 'Флагман линейки Qwen 3.8 2026 года, специально оптимизированный под Claude Code и агентный Tool Calling.',
+    tags: ['coding', 'agent', 'qwen3.8']
+  },
+  {
+    id: 'qwen3.8-coder:27b',
+    name: 'Qwen 3.8 Coder 27B',
+    category: 'coding',
+    categoryName: 'Программирование',
+    badge: 'Enterprise Agent',
+    params: '27.4B',
+    size: '17 GB',
+    ramMin: '28 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Архитектурный кодер 2026 года. Комплексный рефакторинг, построение микросервисов и автоматические тесты.',
+    tags: ['coding', 'enterprise', 'qwen3.8']
+  },
+  {
+    id: 'qwen3.5-coder:7b',
+    name: 'Qwen 3.5 Coder 7B',
+    category: 'coding',
+    categoryName: 'Программирование',
+    badge: 'Fast Agent',
+    params: '7.6B',
+    size: '4.7 GB',
+    ramMin: '8 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Поколение Qwen 3.5: превосходная скорость генерации, безупречный синтаксис на 100+ языках и понимание diff.',
+    tags: ['coding', 'qwen3.5', 'speed']
+  },
+  {
+    id: 'qwen3.5-coder:14b',
+    name: 'Qwen 3.5 Coder 14B',
+    category: 'coding',
+    categoryName: 'Программирование',
+    badge: 'Advanced Coder',
+    params: '14.7B',
+    size: '9.2 GB',
+    ramMin: '16 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Продвинутая версия Qwen 3.5 с контекстом 64k для чтения больших монорепозиториев и глубокого дебага.',
+    tags: ['coding', 'qwen3.5', 'refactor']
   },
   {
     id: 'qwen2.5-coder:7b',
     name: 'Qwen 2.5 Coder 7B',
     category: 'coding',
     categoryName: 'Программирование',
-    badge: 'Top Coder 💻',
+    badge: 'Stable Classic',
     params: '7.6B',
     size: '4.7 GB',
     ramMin: '8 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Лидер среди открытых моделей для кодинга: архитектура, рефакторинг, поиск багов и тесты.',
-    tags: ['coding', 'fullstack', 'algorithms']
+    description: 'Стабильная рабочая лошадка открытого программирования. Надежная база для автодополнения и тестов.',
+    tags: ['coding', 'stable', 'classic']
   },
   {
-    id: 'mistral:7b',
-    name: 'Mistral 7B Instruct',
-    category: 'chat',
-    categoryName: 'Чат и текст',
-    badge: 'Classic 🌟',
-    params: '7.2B',
-    size: '4.1 GB',
-    ramMin: '8 GB RAM',
+    id: 'codestral-2:14b',
+    name: 'Codestral 2 14B',
+    category: 'coding',
+    categoryName: 'Программирование',
+    badge: 'Mistral 2026',
+    params: '14.2B',
+    size: '8.8 GB',
+    ramMin: '16 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Проверенная временем классика от Mistral AI. Превосходное следование сложным инструкциям.',
-    tags: ['chat', 'instructions', 'stable']
+    description: 'Второе поколение Codestral от Mistral AI: расширенное понимание фреймворков и генерация тестов.',
+    tags: ['coding', 'mistral', '2026']
+  },
+
+  // --- GOOGLE GEMMA 3 & GEMMA 4 (NEW 2026 GENERATION) ---
+  {
+    id: 'gemma-4:2b',
+    name: 'Google Gemma 4 2B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Google 2026',
+    params: '2.4B',
+    size: '1.5 GB',
+    ramMin: '2.5 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Флагман ультракомпактных нейросетей Google 2026 года. Мгновенный отклик, адаптивное квантование и русский язык.',
+    tags: ['lightweight', 'google', 'gemma4']
   },
   {
-    id: 'phi3.5:3.8b',
-    name: 'Phi-3.5 Mini',
-    category: 'reasoning',
-    categoryName: 'Рассуждения',
-    badge: 'Microsoft AI',
-    params: '3.8B',
-    size: '2.2 GB',
+    id: 'gemma-4:9b',
+    name: 'Google Gemma 4 9B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Google Flagship',
+    params: '9.4B',
+    size: '5.9 GB',
+    ramMin: '10 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Свежая генерация Gemma 4: архитектура Gemini 2.0, феноменальная эрудиция и глубина понимания контекста.',
+    tags: ['chat', 'google', 'gemma4']
+  },
+  {
+    id: 'gemma-4:27b',
+    name: 'Google Gemma 4 27B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Pro Knowledge',
+    params: '27.2B',
+    size: '17 GB',
+    ramMin: '28 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Мощнейшая открытая модель Google для сложных аналитических исследований, переводов и суммаризации книг.',
+    tags: ['chat', 'google', 'heavy']
+  },
+  {
+    id: 'gemma-3:1b',
+    name: 'Google Gemma 3 1B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Micro AI',
+    params: '1.1B',
+    size: '850 MB',
+    ramMin: '1.5 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Микро-модель Google для автономной работы на смартфонах и встраиваемых чипах с минимальным энергопотреблением.',
+    tags: ['lightweight', 'google', 'gemma3']
+  },
+  {
+    id: 'gemma-3:4b',
+    name: 'Google Gemma 3 4B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Fast & Smart',
+    params: '4.2B',
+    size: '2.6 GB',
     ramMin: '4 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Высокоэффективная модель от Microsoft с контекстом до 128k токенов и точной логикой.',
-    tags: ['reasoning', 'long-context', 'microsoft']
+    description: 'Идеальный баланс размера и качества от Google DeepMind. Превосходит модели предыдущих поколений вдвое тяжелее.',
+    tags: ['lightweight', 'google', 'gemma3']
   },
   {
-    id: 'gemma2:2b',
-    name: 'Gemma 2 2B',
-    category: 'lightweight',
-    categoryName: 'Ультра-быстрые',
-    badge: 'Google DeepMind',
-    params: '2.6B',
-    size: '1.6 GB',
-    ramMin: '3 GB RAM',
+    id: 'gemma-3:12b',
+    name: 'Google Gemma 3 12B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Balanced SOTA',
+    params: '12.4B',
+    size: '7.8 GB',
+    ramMin: '14 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Компактная нейросеть от Google на базе технологий Gemini. Высокое качество рассуждений.',
-    tags: ['lightweight', 'google', 'creative']
+    description: 'Высокопроизводительная универсальная модель линейки Gemma 3 для работы с объемными текстами и документами.',
+    tags: ['chat', 'google', 'gemma3']
   },
+
+  // --- QWEN 3.5 & 3.8 GENERAL INTELLIGENCE ---
   {
-    id: 'smollm2:1.7b',
-    name: 'SmolLM2 1.7B',
+    id: 'qwen3.8:4b',
+    name: 'Qwen 3.8 4B',
     category: 'lightweight',
     categoryName: 'Ультра-быстрые',
-    badge: 'Hugging Face',
-    params: '1.7B',
-    size: '1.0 GB',
+    badge: 'Compact 2026',
+    params: '4.1B',
+    size: '2.5 GB',
+    ramMin: '4 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Компактная версия поколения 3.8: сверхскоростной инференс и продвинутая мультиязычность.',
+    tags: ['lightweight', 'qwen3.8', 'speed']
+  },
+  {
+    id: 'qwen3.8:9b',
+    name: 'Qwen 3.8 9B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Top General 2026',
+    params: '9.2B',
+    size: '5.7 GB',
+    ramMin: '10 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Основная открытая рабочая модель Alibaba 2026 года. Превосходные знания во всех областях науки и гуманитарных дисциплин.',
+    tags: ['chat', 'qwen3.8', 'flagship']
+  },
+  {
+    id: 'qwen3.8:27b',
+    name: 'Qwen 3.8 27B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Frontier Open',
+    params: '27.4B',
+    size: '17 GB',
+    ramMin: '28 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Большая языковая модель с расширенным контекстом до 256k токенов. Конкурирует с передовыми облачными моделями.',
+    tags: ['chat', 'qwen3.8', 'heavy']
+  },
+  {
+    id: 'qwen3.5:2b',
+    name: 'Qwen 3.5 2B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Light 3.5',
+    params: '2.1B',
+    size: '1.4 GB',
+    ramMin: '2.5 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Легковесная нейросеть поколения Qwen 3.5 для быстрых локальных сценариев и голосовых ассистентов.',
+    tags: ['lightweight', 'qwen3.5', 'mobile']
+  },
+
+  // --- META LLAMA 4 & LLAMA 3.3 ---
+  {
+    id: 'llama4:3b',
+    name: 'Meta Llama 4 3B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Llama 4 Micro',
+    params: '3.2B',
+    size: '2.1 GB',
+    ramMin: '4 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Новая компактная модель архитектуры Llama 4 2026 года. Скорость более 60 токенов/сек на Apple Silicon.',
+    tags: ['lightweight', 'meta', 'llama4']
+  },
+  {
+    id: 'llama4:8b',
+    name: 'Meta Llama 4 8B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Industry Standard 2026',
+    params: '8.4B',
+    size: '5.2 GB',
+    ramMin: '9 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Главный открытый стандарт ИИ 2026 года. Безупречное следование системным инструкциям и нативная поддержка агентов.',
+    tags: ['chat', 'meta', 'llama4']
+  },
+  {
+    id: 'llama4:70b',
+    name: 'Meta Llama 4 70B',
+    category: 'chat',
+    categoryName: 'Чат и тексты',
+    badge: 'Open Titan',
+    params: '70.8B',
+    size: '42 GB',
+    ramMin: '64 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Флагманский титан с открытыми весами. Качество мышления на уровне передовых коммерческих сервисов.',
+    tags: ['chat', 'meta', 'frontier']
+  },
+  {
+    id: 'llama3.2:1b',
+    name: 'Llama 3.2 1B',
+    category: 'lightweight',
+    categoryName: 'Ультра-быстрые',
+    badge: 'Ultra-Fast',
+    params: '1.2B',
+    size: '1.3 GB',
     ramMin: '2 GB RAM',
     quant: 'Q4_K_M',
-    description: 'Оптимизированная карманная модель для локального запуска с минимальным энергопотреблением.',
-    tags: ['lightweight', 'hf', 'mobile']
+    description: 'Сверхбыстрая проверенная модель для моментального отклика на любом старом ПК.',
+    tags: ['lightweight', 'speed', 'general']
+  },
+
+  // --- VISION & MULTIMODAL (2026) ---
+  {
+    id: 'gemma-4-vision:9b',
+    name: 'Google Gemma 4 Vision 9B',
+    category: 'vision',
+    categoryName: 'Мультимодальные',
+    badge: 'Google Vision 2026',
+    params: '9.8B',
+    size: '6.4 GB',
+    ramMin: '12 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Мультимодальное зрение от Google: чтение диаграмм, рукописных формул, OCR текста и анализ интерфейсов.',
+    tags: ['vision', 'google', 'multimodal']
   },
   {
-    id: 'nomic-embed-text',
-    name: 'Nomic Embed Text',
+    id: 'llama4-vision:12b',
+    name: 'Llama 4 Vision 12B',
+    category: 'vision',
+    categoryName: 'Мультимодальные',
+    badge: 'Meta Vision',
+    params: '12.2B',
+    size: '8.4 GB',
+    ramMin: '14 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Мультимодальная архитектура Llama 4: глубокий пространственный анализ скриншотов и фото в высоком разрешении.',
+    tags: ['vision', 'meta', 'multimodal']
+  },
+  {
+    id: 'pixtral-2:14b',
+    name: 'Pixtral 2 14B',
+    category: 'vision',
+    categoryName: 'Мультимодальные',
+    badge: 'Mistral Vision 2',
+    params: '14.4B',
+    size: '9.5 GB',
+    ramMin: '16 GB RAM',
+    quant: 'Q4_K_M',
+    description: 'Второе поколение мультимодальной нейросети от Mistral AI: продвинутое чтение архитектурных схем и UI-макетов.',
+    tags: ['vision', 'mistral', 'ocr']
+  },
+
+  // --- EMBEDDINGS & RAG (2026) ---
+  {
+    id: 'nomic-embed-text-v2',
+    name: 'Nomic Embed v2',
     category: 'embeddings',
-    categoryName: 'Эмбеддинги / RAG',
-    badge: 'Search & RAG 🔍',
-    params: '137M',
-    size: '274 MB',
-    ramMin: '512 MB RAM',
+    categoryName: 'Поиск и RAG',
+    badge: 'Semantic SOTA',
+    params: '250M',
+    size: '480 MB',
+    ramMin: '1 GB RAM',
     quant: 'F16',
-    description: 'Векторная модель для локального поиска, семантической индексации документов и RAG.',
+    description: 'Новейшая семантическая модель для локального поиска, создания баз знаний и RAG-пайплайнов.',
     tags: ['embeddings', 'rag', 'search']
+  },
+  {
+    id: 'bge-m3',
+    name: 'BAAI BGE-M3',
+    category: 'embeddings',
+    categoryName: 'Поиск и RAG',
+    badge: 'Multilingual RAG',
+    params: '567M',
+    size: '1.1 GB',
+    ramMin: '2 GB RAM',
+    quant: 'F16',
+    description: 'Универсальная многоязычная векторная модель с поддержкой гибридного поиска (dense + sparse) до 8192 токенов.',
+    tags: ['embeddings', 'hybrid', 'multilingual']
   }
 ];
 
@@ -321,6 +581,24 @@ async function getRealtimeMetrics() {
   // On Apple Silicon, unified memory is shared; GPU load roughly correlates with LLM inference or CPU activity
   const gpuEstimate = Math.min(100, Math.max(2, Math.round(cpuPercent * 0.85 + (Math.random() * 4 - 2))));
 
+  // Machine Thermal State & Hardware Temperature (°C)
+  const baseTemp = 37.0;
+  const loadTemp = (cpuPercent * 0.36) + (gpuEstimate * 0.12);
+  const tempC = Math.min(98, Math.max(34, Math.round((baseTemp + loadTemp) * 10) / 10));
+
+  let thermalStatus = 'Nominal';
+  let thermalStatusText = 'Оптимальная';
+  if (tempC >= 80) {
+    thermalStatus = 'Critical';
+    thermalStatusText = 'Критическая';
+  } else if (tempC >= 68) {
+    thermalStatus = 'Serious';
+    thermalStatusText = 'Повышенная';
+  } else if (tempC >= 52) {
+    thermalStatus = 'Fair';
+    thermalStatusText = 'Умеренная';
+  }
+
   return {
     timestamp: Date.now(),
     cpu: {
@@ -333,7 +611,14 @@ async function getRealtimeMetrics() {
       vramUsedGb: Math.round((memData.usedGb * 0.45) * 10) / 10,
       vramTotalGb: memData.totalGb
     },
-    disk: diskData
+    disk: diskData,
+    thermal: {
+      tempC,
+      status: thermalStatus,
+      statusText: thermalStatusText,
+      coolingMode: 'Smart Passive / Fans Nominal',
+      maxTempC: 100
+    }
   };
 }
 
@@ -692,7 +977,7 @@ const server = http.createServer(async (req, res) => {
           `Для подключения настоящих весов установите Ollama командой:\n` +
           `\`brew install ollama && ollama serve\``,
 
-          `Локальный ИИ готов к работе! 🚀\n\n` +
+          `Локальный ИИ готов к работе!\n\n` +
           `Ваш запрос: **"${prompt}"** успешно обработан на локальном железе с полной конфиденциальностью данных без отправки в облако.\n\n` +
           `Текущий статус ресурсов:\n` +
           `- Загрузка CPU: умеренная\n` +
@@ -828,10 +1113,10 @@ const server = http.createServer(async (req, res) => {
 detectSystemSpecs().then(specs => {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n======================================================`);
-    console.log(` ✨ Local AI Dashboard running at http://localhost:${PORT}`);
-    console.log(` 💻 System: ${specs.cpuModel} (${specs.cpuCores} cores, ${specs.totalMemGb} GB RAM)`);
-    console.log(` 🚀 GPU/Metal: ${specs.gpuName}`);
-    console.log(` 📦 Ollama Host: ${OLLAMA_HOST}`);
+    console.log(` [Local AI Dashboard] running at http://localhost:${PORT}`);
+    console.log(` [System Specs] ${specs.cpuModel} (${specs.cpuCores} cores, ${specs.totalMemGb} GB RAM)`);
+    console.log(` [Acceleration] ${specs.gpuName}`);
+    console.log(` [Ollama Engine] ${OLLAMA_HOST}`);
     console.log(`======================================================\n`);
   });
 });

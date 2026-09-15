@@ -18,7 +18,7 @@ const AGENT_ROLES = [
   {
     id: 'coder',
     name: 'Claude Code / Software Architect',
-    icon: '🛠️',
+    icon: 'code',
     description: 'Автономная разработка: создание компонентов, реализация фичей, рефакторинг и исправление багов.',
     systemPrompt: `You are an elite autonomous software engineer, equivalent to Claude Code and Codex.
 Your goal is to complete the user's software engineering task autonomously using your local tools.
@@ -32,7 +32,7 @@ Wait for the tool result before proceeding.`
   {
     id: 'qa',
     name: 'QA & Test Automation Specialist',
-    icon: '🧪',
+    icon: 'flask',
     description: 'Написание всесторонних тестов, поиск краевых случаев и проверка работоспособности кода.',
     systemPrompt: `You are a Senior QA and Test Automation Engineer.
 Your goal is to inspect the codebase, write unit and integration tests, run test commands using terminal, and verify zero regressions.
@@ -45,7 +45,7 @@ When calling a tool, use:
   {
     id: 'auditor',
     name: 'Security & Performance Reviewer',
-    icon: '🔍',
+    icon: 'shield',
     description: 'Аудит безопасности, поиск уязвимостей, утечек памяти и оптимизация производительности.',
     systemPrompt: `You are an expert Security and Performance Code Auditor.
 Your goal is to deeply review code for security flaws, memory leaks, performance bottlenecks, and bad patterns.
@@ -58,7 +58,7 @@ Call tools using:
   {
     id: 'devops',
     name: 'DevOps & Terminal Assistant',
-    icon: '⚡',
+    icon: 'terminal',
     description: 'Автоматизация окружения, сборка, настройка скриптов, git и диагностика системы.',
     systemPrompt: `You are a Senior DevOps and Systems Engineer.
 Your goal is to manage configurations, build scripts, git operations, and diagnose environment issues.
@@ -458,7 +458,7 @@ async function runSimulatedAgentWorkflow(prompt, role, model, onEvent) {
   await wait(900);
   onEvent('final_response', {
     step: 3,
-    content: `### ✅ Задача успешно обработана агентом (${role.name})
+    content: `### [Успешно] Задача выполнена агентом (${role.name})
 
 **Результаты выполнения:**
 1. **Анализ файлов**: Проверена рабочая директория \`${WORKSPACE_DIR}\` (всего файлов/директорий: ${listRes.count}).

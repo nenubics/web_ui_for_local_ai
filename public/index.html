@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local AI Hub — Дашборд и Агент разработки</title>
+  <title>Local AI Hub — Дашборд, Мониторинг ресурсов & Claude Code</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
 </head>
@@ -20,7 +20,7 @@
           <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
             <path d="M12 6v6l4 2"/>
-            <circle cx="12" cy="12" r="3" fill="#6366f1" stroke="none"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
           </svg>
         </div>
         <div class="brand-text">
@@ -29,21 +29,53 @@
         </div>
       </div>
 
-      <div class="system-summary-badge" id="systemSpecsBadge">
-        <span class="spec-icon">⚡</span>
-        <span class="spec-text" id="headerSystemSpecs">Загрузка спецификаций...</span>
+      <div class="header-center-stats">
+        <div class="system-summary-badge" id="systemSpecsBadge">
+          <svg class="spec-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+            <rect x="9" y="9" width="6" height="6"/>
+            <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
+            <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
+            <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/>
+            <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
+          </svg>
+          <span class="spec-text" id="headerSystemSpecs">Загрузка спецификаций...</span>
+        </div>
+
+        <div class="header-temp-chip" id="headerTempChip" title="Температура процессора">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+          </svg>
+          <span id="headerTempText">--°C</span>
+        </div>
       </div>
 
       <div class="header-actions">
+        <!-- Theme Toggle (Light / Dark) -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="Переключить тему оформления">
+          <span class="theme-icon icon-moon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+            </svg>
+          </span>
+          <span class="theme-icon icon-sun hidden">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+            </svg>
+          </span>
+        </button>
+
+        <!-- Ollama Connection Pill -->
         <button class="status-pill" id="ollamaStatusBtn" title="Нажмите для инструкций по подключению">
           <span class="status-dot pulsing" id="statusDot"></span>
           <span class="status-label" id="statusLabel">Проверка Ollama...</span>
         </button>
 
+        <!-- Guide Button -->
         <button class="btn btn-secondary btn-icon-text" id="openSetupModalBtn">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
           Инструкция
         </button>
@@ -53,14 +85,23 @@
     <!-- Top Navigation Tabs -->
     <nav class="nav-tabs-bar">
       <button class="nav-tab active" data-view="dashboard">
-        <span class="nav-tab-icon">📊</span> Мониторинг & Модели
+        <svg class="nav-tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
+        </svg>
+        Мониторинг & Модели
       </button>
       <button class="nav-tab" data-view="agent">
-        <span class="nav-tab-icon">💻</span> Claude Code (Агент разработки)
+        <svg class="nav-tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+        </svg>
+        Claude Code (Агент разработки)
         <span class="nav-badge-pill">Autonomous</span>
       </button>
       <button class="nav-tab" data-view="playground">
-        <span class="nav-tab-icon">💬</span> Playground Чат
+        <svg class="nav-tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Playground Чат
       </button>
     </nav>
 
@@ -68,30 +109,41 @@
          VIEW 1: DASHBOARD & RESOURCE MONITORING & 1-CLICK MODEL HUB
          ==================================================================== -->
     <main id="view-dashboard" class="tab-view active">
-      <!-- SECTION 1: REAL-TIME RESOURCE CONSUMPTION -->
+      <!-- SECTION 1: REAL-TIME RESOURCE CONSUMPTION (5 METRICS) -->
       <section class="section-container">
         <div class="section-title-row">
           <div>
-            <h2 class="section-heading">Потребление ресурсов системы</h2>
-            <p class="section-subheading">Мониторинг нагрузки оборудования в реальном времени с обновлением каждую секунду</p>
+            <h2 class="section-heading">Потребление ресурсов и температура системы</h2>
+            <p class="section-subheading">Мониторинг оборудования в реальном времени с обновлением каждую секунду</p>
           </div>
           <div class="section-actions">
             <span class="live-tag">
               <span class="live-indicator"></span> LIVE 1s
             </span>
             <button class="btn btn-subtle" id="toggleDetailedChartBtn">
-              <span id="detailedChartToggleIcon">📊</span> Детальный график
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              Детальный график
             </button>
           </div>
         </div>
 
-        <!-- 4 Resource Metric Cards with Mini Canvas Charts -->
-        <div class="metrics-grid">
+        <!-- 5 Resource Metric Cards Grid -->
+        <div class="metrics-grid-5">
           <!-- Card 1: CPU -->
           <div class="metric-card" id="cpuCard">
             <div class="metric-header">
               <div class="metric-title-group">
-                <span class="metric-icon cpu-accent">⚙️</span>
+                <div class="metric-svg-icon cpu-accent">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>
+                    <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
+                    <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
+                    <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/>
+                    <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
+                  </svg>
+                </div>
                 <span class="metric-name">Процессор (CPU)</span>
               </div>
               <span class="badge badge-cyan" id="cpuCoresBadge">-- Cores</span>
@@ -101,7 +153,7 @@
               <div class="metric-subtext" id="cpuSubtext">Загрузка всех ядер</div>
             </div>
             <div class="chart-container">
-              <canvas id="cpuChart" height="70"></canvas>
+              <canvas id="cpuChart" height="65"></canvas>
             </div>
             <div class="metric-footer">
               <span class="metric-stat">Пик: <strong id="cpuPeak">0%</strong></span>
@@ -113,7 +165,14 @@
           <div class="metric-card" id="ramCard">
             <div class="metric-header">
               <div class="metric-title-group">
-                <span class="metric-icon ram-accent">🧠</span>
+                <div class="metric-svg-icon ram-accent">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                    <line x1="6" y1="15" x2="6" y2="15.01"/><line x1="10" y1="15" x2="10.01" y2="15"/>
+                    <line x1="14" y1="15" x2="14.01" y2="15"/><line x1="18" y1="15" x2="18.01" y2="15"/>
+                  </svg>
+                </div>
                 <span class="metric-name">Память (RAM)</span>
               </div>
               <span class="badge badge-emerald" id="ramPercentBadge">0%</span>
@@ -123,11 +182,11 @@
               <div class="metric-subtext" id="ramSubtext">из 0.0 GB доступно</div>
             </div>
             <div class="chart-container">
-              <canvas id="ramChart" height="70"></canvas>
+              <canvas id="ramChart" height="65"></canvas>
             </div>
             <div class="metric-footer">
               <span class="metric-stat">Свободно: <strong id="ramFree">0 GB</strong></span>
-              <span class="metric-stat">Статус: <strong class="text-emerald" id="ramPressure">Норма</strong></span>
+              <span class="metric-stat">Давление: <strong class="text-emerald" id="ramPressure">Норма</strong></span>
             </div>
           </div>
 
@@ -135,29 +194,63 @@
           <div class="metric-card" id="gpuCard">
             <div class="metric-header">
               <div class="metric-title-group">
-                <span class="metric-icon gpu-accent">⚡</span>
-                <span class="metric-name">GPU & Metal VRAM</span>
+                <div class="metric-svg-icon gpu-accent">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                </div>
+                <span class="metric-name">GPU & Metal</span>
               </div>
               <span class="badge badge-violet" id="gpuStatusBadge">Apple Metal</span>
             </div>
             <div class="metric-value-row">
               <div class="metric-main-value" id="gpuVal">0<span class="metric-unit">%</span></div>
-              <div class="metric-subtext" id="gpuSubtext">Унифицированный инференс</div>
+              <div class="metric-subtext" id="gpuSubtext">Инференс нейросетей</div>
             </div>
             <div class="chart-container">
-              <canvas id="gpuChart" height="70"></canvas>
+              <canvas id="gpuChart" height="65"></canvas>
             </div>
             <div class="metric-footer">
-              <span class="metric-stat">Выделено VRAM: <strong id="gpuVram">0 GB</strong></span>
-              <span class="metric-stat">Metal: <strong class="text-violet">Active</strong></span>
+              <span class="metric-stat">VRAM: <strong id="gpuVram">0 GB</strong></span>
+              <span class="metric-stat">Ускорение: <strong class="text-violet">Metal</strong></span>
             </div>
           </div>
 
-          <!-- Card 4: Disk / Models Storage -->
+          <!-- Card 4: Hardware Temperature (NEW) -->
+          <div class="metric-card" id="tempCard">
+            <div class="metric-header">
+              <div class="metric-title-group">
+                <div class="metric-svg-icon temp-accent">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                  </svg>
+                </div>
+                <span class="metric-name">Температура</span>
+              </div>
+              <span class="badge badge-emerald" id="tempStatusBadge">Оптимальная</span>
+            </div>
+            <div class="metric-value-row">
+              <div class="metric-main-value" id="tempVal">37.0<span class="metric-unit">°C</span></div>
+              <div class="metric-subtext" id="tempSubtext">Термальное состояние чипа</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="tempChart" height="65"></canvas>
+            </div>
+            <div class="metric-footer">
+              <span class="metric-stat">Пик: <strong id="tempPeak">0°C</strong></span>
+              <span class="metric-stat">Лимит: <strong id="tempLimit">100°C</strong></span>
+            </div>
+          </div>
+
+          <!-- Card 5: Disk Storage -->
           <div class="metric-card" id="diskCard">
             <div class="metric-header">
               <div class="metric-title-group">
-                <span class="metric-icon disk-accent">💾</span>
+                <div class="metric-svg-icon disk-accent">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/>
+                  </svg>
+                </div>
                 <span class="metric-name">Хранилище моделей</span>
               </div>
               <span class="badge badge-amber" id="diskUsedPercent">0% занято</span>
@@ -172,7 +265,7 @@
               </div>
             </div>
             <div class="metric-footer">
-              <span class="metric-stat">Всего диск: <strong id="diskTotal">0 GB</strong></span>
+              <span class="metric-stat">Всего: <strong id="diskTotal">0 GB</strong></span>
               <span class="metric-stat">Занято: <strong id="diskUsed">0 GB</strong></span>
             </div>
           </div>
@@ -182,12 +275,13 @@
         <div class="master-chart-card hidden" id="masterChartSection">
           <div class="master-chart-header">
             <div>
-              <h3 class="master-chart-title">Динамическая история потребления ресурсов (60 сек)</h3>
-              <p class="master-chart-sub">Совмещенный график нагрузки CPU и оперативной памяти</p>
+              <h3 class="master-chart-title">Динамическая история нагрузки и температуры (60 сек)</h3>
+              <p class="master-chart-sub">Совмещенный график нагрузки CPU, оперативной памяти и нагрева</p>
             </div>
             <div class="master-chart-legend">
-              <span class="legend-item"><span class="legend-box box-cpu"></span> Нагрузка CPU (%)</span>
-              <span class="legend-item"><span class="legend-box box-ram"></span> Память RAM (%)</span>
+              <span class="legend-item"><span class="legend-box box-cpu"></span> CPU (%)</span>
+              <span class="legend-item"><span class="legend-box box-ram"></span> RAM (%)</span>
+              <span class="legend-item"><span class="legend-box box-temp"></span> Нагрев (°C)</span>
               <button class="btn btn-sm btn-subtle" id="clearChartHistoryBtn">Сброс</button>
             </div>
           </div>
@@ -202,11 +296,11 @@
         <div class="section-title-row">
           <div>
             <h2 class="section-heading">Витрина моделей с установкой в 1 клик</h2>
-            <p class="section-subheading">Выберите оптимизированную открытую нейросеть для локального запуска без облака</p>
+            <p class="section-subheading">Оптимизированные открытые нейросети для локального запуска без облачных сервисов</p>
           </div>
         </div>
 
-        <!-- Active Pull Progress Bar (Appears when downloading) -->
+        <!-- Active Pull Progress Bar -->
         <div class="pull-progress-card hidden" id="pullProgressCard">
           <div class="pull-progress-header">
             <div class="pull-status-group">
@@ -224,38 +318,71 @@
           <div class="pull-progress-track">
             <div class="pull-progress-bar" id="pullProgressBar" style="width: 0%"></div>
           </div>
-          <div class="pull-note" id="pullNote">Веса сохраняются локально. После скачивания модель сразу доступна в чате и агенте.</div>
+          <div class="pull-note" id="pullNote">Веса сохраняются локально на диск. После скачивания модель сразу готова к работе.</div>
         </div>
 
         <!-- Quick Custom Pull Input Bar -->
         <div class="custom-pull-bar">
           <div class="custom-pull-input-wrapper">
-            <span class="terminal-prefix">$ ollama run</span>
+            <span class="terminal-prefix">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+              ollama run
+            </span>
             <input type="text" id="customModelInput" placeholder="Введите тег любой модели (например: qwen2.5-coder:7b, deepseek-r1:7b, llama3.2:3b)" autocomplete="off">
           </div>
           <button class="btn btn-primary" id="customPullBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             Скачать
           </button>
         </div>
 
-        <!-- Filter Tabs -->
+        <!-- Filter Tabs with SVG Icons -->
         <div class="filter-tabs">
-          <button class="tab-btn active" data-category="all">Все модели</button>
-          <button class="tab-btn" data-category="reasoning">🧠 Рассуждения (DeepSeek)</button>
-          <button class="tab-btn" data-category="coding">💻 Программирование (Qwen Coder)</button>
-          <button class="tab-btn" data-category="lightweight">⚡ Ультра-быстрые (&lt; 2GB)</button>
-          <button class="tab-btn" data-category="chat">💬 Чат и тексты</button>
-          <button class="tab-btn" data-category="embeddings">🔍 Поиск и RAG</button>
+          <button class="tab-btn active" data-category="all">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Все модели
+          </button>
+          <button class="tab-btn" data-category="reasoning">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M12 5v13"/>
+            </svg>
+            Рассуждения (DeepSeek)
+          </button>
+          <button class="tab-btn" data-category="coding">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+            Программирование (Qwen Coder)
+          </button>
+          <button class="tab-btn" data-category="lightweight">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Ультра-быстрые (&lt; 2GB)
+          </button>
+          <button class="tab-btn" data-category="chat">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Чат и тексты
+          </button>
+          <button class="tab-btn" data-category="embeddings">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Поиск и RAG
+          </button>
         </div>
 
         <!-- Models Showcase Grid -->
         <div class="models-grid" id="modelsGrid">
-          <!-- Rendered dynamically by app.js -->
+          <!-- Rendered dynamically by app.js with clean SVG tags -->
         </div>
       </section>
 
@@ -275,7 +402,7 @@
             </button>
           </div>
           <div class="installed-list installed-grid" id="installedList">
-            <!-- Rendered by app.js -->
+            <!-- Rendered by app.js with SVG icons -->
           </div>
         </div>
       </section>
@@ -317,7 +444,9 @@
             </div>
 
             <div class="agent-workspace-pill" id="agentWorkdirBadge">
-              <span class="ws-icon">📁</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+              </svg>
               <span class="ws-path" id="agentWorkdirText">/workspace</span>
             </div>
           </div>
@@ -327,20 +456,32 @@
           </div>
         </div>
 
-        <!-- Quick Starter Prompts -->
+        <!-- Quick Prompts with SVG icons -->
         <div class="quick-prompts-row">
           <span class="quick-prompt-label">Быстрые задачи:</span>
           <button class="quick-chip" data-prompt="Проверь git статус и найди несохраненные файлы в проекте">
-            🔍 Git статус и аудит
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+            </svg>
+            Git статус и аудит
           </button>
           <button class="quick-chip" data-prompt="Покажи структуру проекта и перечисли ключевые функции в server.js">
-            📋 Анализ архитектуры
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+            </svg>
+            Анализ архитектуры
           </button>
           <button class="quick-chip" data-prompt="Создай скрипт test_api.js для автоматической проверки эндпоинтов телеметрии">
-            🧪 Создать автотест API
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 2v7.31L4.15 19.1A2 2 0 0 0 5.86 22h12.28a2 2 0 0 0 1.71-2.9L14 9.31V2"/><path d="M8.5 2h7"/>
+            </svg>
+            Создать автотест API
           </button>
           <button class="quick-chip" data-prompt="Проверь безопасность server.js и защищенность от выхода за пределы директории">
-            🛡️ Аудит безопасности
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+            </svg>
+            Аудит безопасности
           </button>
         </div>
 
@@ -358,12 +499,16 @@
           </div>
 
           <div class="agent-stream-container" id="agentStreamContainer">
-            <!-- Welcome placeholder -->
+            <!-- Welcome placeholder with SVG -->
             <div class="agent-welcome-placeholder" id="agentWelcomePlaceholder">
-              <div class="welcome-icon">⚡</div>
-              <h3>Claude Code / Open Codex</h3>
-              <p>Локальный автономный агент программирования на базе открытых нейросетей.<br>
-              Агент может читать проект, выполнять команды в терминале, создавать и патчить код с генерацией визуального diff.</p>
+              <div class="welcome-icon">
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                </svg>
+              </div>
+              <h3>Claude Code / Open Codex Studio</h3>
+              <p>Локальный автономный агент разработки на базе открытых нейросетей.<br>
+              Агент может читать файлы проекта, выполнять команды в терминале, создавать и редактировать код с выводом визуального diff.</p>
             </div>
           </div>
         </div>
@@ -402,7 +547,12 @@
               </div>
             </div>
             <div class="inference-stats" id="inferenceStats">
-              <span class="tps-badge" id="tpsBadge">⚡ 0.0 t/s</span>
+              <span class="tps-badge" id="tpsBadge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                <span id="tpsValue">0.0 t/s</span>
+              </span>
             </div>
           </div>
 
@@ -421,8 +571,7 @@
             <textarea id="chatInput" rows="2" placeholder="Напишите сообщение (Enter — отправить, Shift+Enter — перенос строки)..."></textarea>
             <button class="btn btn-primary btn-send" id="chatSendBtn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
             </button>
           </div>
@@ -433,7 +582,7 @@
     <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-content">
-        <div>LocalAI Pulse — Быстрый минималистичный дашборд и агент разработки Claude Code</div>
+        <div>LocalAI Pulse — Минималистичный дашборд и агент разработки Claude Code</div>
         <div class="footer-links">
           <span>100% Приватно • Локальный инференс • Apple Metal / CUDA</span>
         </div>
@@ -470,7 +619,7 @@
         </div>
 
         <div class="modal-callout">
-          <strong>Примечание:</strong> Если Ollama еще не запущена, интерфейс автоматически переходит в демонстрационный режим, позволяя протестировать мониторинг ресурсов системы, агентную систему и анимацию интерфейса.
+          <strong>Примечание:</strong> Если Ollama еще не запущена, интерфейс автоматически переходит в демонстрационный режим, позволяя протестировать мониторинг ресурсов, температуру и агентную систему.
         </div>
       </div>
       <div class="modal-footer">
