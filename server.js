@@ -3,6 +3,7 @@ const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
 const { exec, spawn } = require('node:child_process');
+const { AGENT_ROLES, TOOLS, executeTool, runAgentTask, WORKSPACE_DIR } = require('./agent.js');
 
 const PORT = process.env.PORT || 3000;
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
@@ -722,6 +723,68 @@ const server = http.createServer(async (req, res) => {
 
         req.on('close', () => clearInterval(chatTimer));
       }
+    });
+    return;
+  }
+
+  // GET /api/agent/roles
+  if (pathname === '/api/agent/roles') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(AGENT_ROLES));
+    return;
+  }
+
+  // GET /api/agent/tools
+  if (pathname === '/api/agent/tools') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(TOOLS));
+    return;
+  }
+
+  // GET /api/agent/workdir
+  if (pathname === '/api/agent/workdir') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ workdir: WORKSPACE_DIR }));
+    return;
+  }
+
+  // POST /api/agent/run (SSE stream of agent steps)
+  if (pathname === '/api/agent/run' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      let payload = {};
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+
+      const prompt = payload.prompt || '';
+      const roleId = payload.roleId || 'coder';
+      const model = payload.model || 'qwen2.5-coder:7b';
+      const maxSteps = payload.maxSteps || 6;
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+      res.write('\n');
+
+      await runAgentTask({
+        prompt,
+        roleId,
+        model,
+        maxSteps,
+        ollamaHost: OLLAMA_HOST,
+        onEvent: (event, data) => {
+          res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        }
+      });
+
+      res.end();
     });
     return;
   }

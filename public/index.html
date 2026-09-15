@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local AI Hub — Дашборд локальных нейросетей</title>
+  <title>Local AI Hub — Дашборд и Агент разработки</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
 </head>
@@ -25,7 +25,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-title">LocalAI <span>Pulse</span></div>
-          <div class="brand-subtitle">Дашборд управления и мониторинга нейросетей</div>
+          <div class="brand-subtitle">Дашборд ресурсов & Агент разработки Claude Code</div>
         </div>
       </div>
 
@@ -50,230 +50,352 @@
       </div>
     </header>
 
-    <!-- SECTION 1: REAL-TIME RESOURCE CONSUMPTION -->
-    <section class="section-container">
-      <div class="section-title-row">
-        <div>
-          <h2 class="section-heading">Потребление ресурсов системы</h2>
-          <p class="section-subheading">Мониторинг нагрузки оборудования в реальном времени с обновлением каждую секунду</p>
+    <!-- Top Navigation Tabs -->
+    <nav class="nav-tabs-bar">
+      <button class="nav-tab active" data-view="dashboard">
+        <span class="nav-tab-icon">📊</span> Мониторинг & Модели
+      </button>
+      <button class="nav-tab" data-view="agent">
+        <span class="nav-tab-icon">💻</span> Claude Code (Агент разработки)
+        <span class="nav-badge-pill">Autonomous</span>
+      </button>
+      <button class="nav-tab" data-view="playground">
+        <span class="nav-tab-icon">💬</span> Playground Чат
+      </button>
+    </nav>
+
+    <!-- ====================================================================
+         VIEW 1: DASHBOARD & RESOURCE MONITORING & 1-CLICK MODEL HUB
+         ==================================================================== -->
+    <main id="view-dashboard" class="tab-view active">
+      <!-- SECTION 1: REAL-TIME RESOURCE CONSUMPTION -->
+      <section class="section-container">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-heading">Потребление ресурсов системы</h2>
+            <p class="section-subheading">Мониторинг нагрузки оборудования в реальном времени с обновлением каждую секунду</p>
+          </div>
+          <div class="section-actions">
+            <span class="live-tag">
+              <span class="live-indicator"></span> LIVE 1s
+            </span>
+            <button class="btn btn-subtle" id="toggleDetailedChartBtn">
+              <span id="detailedChartToggleIcon">📊</span> Детальный график
+            </button>
+          </div>
         </div>
-        <div class="section-actions">
-          <span class="live-tag">
-            <span class="live-indicator"></span> LIVE 1s
-          </span>
-          <button class="btn btn-subtle" id="toggleDetailedChartBtn">
-            <span id="detailedChartToggleIcon">📊</span> Детальный график
+
+        <!-- 4 Resource Metric Cards with Mini Canvas Charts -->
+        <div class="metrics-grid">
+          <!-- Card 1: CPU -->
+          <div class="metric-card" id="cpuCard">
+            <div class="metric-header">
+              <div class="metric-title-group">
+                <span class="metric-icon cpu-accent">⚙️</span>
+                <span class="metric-name">Процессор (CPU)</span>
+              </div>
+              <span class="badge badge-cyan" id="cpuCoresBadge">-- Cores</span>
+            </div>
+            <div class="metric-value-row">
+              <div class="metric-main-value" id="cpuVal">0<span class="metric-unit">%</span></div>
+              <div class="metric-subtext" id="cpuSubtext">Загрузка всех ядер</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="cpuChart" height="70"></canvas>
+            </div>
+            <div class="metric-footer">
+              <span class="metric-stat">Пик: <strong id="cpuPeak">0%</strong></span>
+              <span class="metric-stat">Среднее: <strong id="cpuAvg">0%</strong></span>
+            </div>
+          </div>
+
+          <!-- Card 2: RAM -->
+          <div class="metric-card" id="ramCard">
+            <div class="metric-header">
+              <div class="metric-title-group">
+                <span class="metric-icon ram-accent">🧠</span>
+                <span class="metric-name">Память (RAM)</span>
+              </div>
+              <span class="badge badge-emerald" id="ramPercentBadge">0%</span>
+            </div>
+            <div class="metric-value-row">
+              <div class="metric-main-value" id="ramVal">0.0 <span class="metric-unit">GB</span></div>
+              <div class="metric-subtext" id="ramSubtext">из 0.0 GB доступно</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="ramChart" height="70"></canvas>
+            </div>
+            <div class="metric-footer">
+              <span class="metric-stat">Свободно: <strong id="ramFree">0 GB</strong></span>
+              <span class="metric-stat">Статус: <strong class="text-emerald" id="ramPressure">Норма</strong></span>
+            </div>
+          </div>
+
+          <!-- Card 3: GPU / Metal -->
+          <div class="metric-card" id="gpuCard">
+            <div class="metric-header">
+              <div class="metric-title-group">
+                <span class="metric-icon gpu-accent">⚡</span>
+                <span class="metric-name">GPU & Metal VRAM</span>
+              </div>
+              <span class="badge badge-violet" id="gpuStatusBadge">Apple Metal</span>
+            </div>
+            <div class="metric-value-row">
+              <div class="metric-main-value" id="gpuVal">0<span class="metric-unit">%</span></div>
+              <div class="metric-subtext" id="gpuSubtext">Унифицированный инференс</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="gpuChart" height="70"></canvas>
+            </div>
+            <div class="metric-footer">
+              <span class="metric-stat">Выделено VRAM: <strong id="gpuVram">0 GB</strong></span>
+              <span class="metric-stat">Metal: <strong class="text-violet">Active</strong></span>
+            </div>
+          </div>
+
+          <!-- Card 4: Disk / Models Storage -->
+          <div class="metric-card" id="diskCard">
+            <div class="metric-header">
+              <div class="metric-title-group">
+                <span class="metric-icon disk-accent">💾</span>
+                <span class="metric-name">Хранилище моделей</span>
+              </div>
+              <span class="badge badge-amber" id="diskUsedPercent">0% занято</span>
+            </div>
+            <div class="metric-value-row">
+              <div class="metric-main-value" id="diskFreeVal">0 <span class="metric-unit">GB</span></div>
+              <div class="metric-subtext" id="diskSubtext">свободно под веса моделей</div>
+            </div>
+            <div class="disk-bar-container">
+              <div class="disk-bar-track">
+                <div class="disk-bar-fill" id="diskBarFill" style="width: 25%"></div>
+              </div>
+            </div>
+            <div class="metric-footer">
+              <span class="metric-stat">Всего диск: <strong id="diskTotal">0 GB</strong></span>
+              <span class="metric-stat">Занято: <strong id="diskUsed">0 GB</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expandable Detailed Master Timeline Chart -->
+        <div class="master-chart-card hidden" id="masterChartSection">
+          <div class="master-chart-header">
+            <div>
+              <h3 class="master-chart-title">Динамическая история потребления ресурсов (60 сек)</h3>
+              <p class="master-chart-sub">Совмещенный график нагрузки CPU и оперативной памяти</p>
+            </div>
+            <div class="master-chart-legend">
+              <span class="legend-item"><span class="legend-box box-cpu"></span> Нагрузка CPU (%)</span>
+              <span class="legend-item"><span class="legend-box box-ram"></span> Память RAM (%)</span>
+              <button class="btn btn-sm btn-subtle" id="clearChartHistoryBtn">Сброс</button>
+            </div>
+          </div>
+          <div class="master-canvas-wrapper">
+            <canvas id="masterChart" height="160"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: ONE-CLICK MODEL INSTALLATION & CATALOG -->
+      <section class="section-container">
+        <div class="section-title-row">
+          <div>
+            <h2 class="section-heading">Витрина моделей с установкой в 1 клик</h2>
+            <p class="section-subheading">Выберите оптимизированную открытую нейросеть для локального запуска без облака</p>
+          </div>
+        </div>
+
+        <!-- Active Pull Progress Bar (Appears when downloading) -->
+        <div class="pull-progress-card hidden" id="pullProgressCard">
+          <div class="pull-progress-header">
+            <div class="pull-status-group">
+              <div class="spinner"></div>
+              <div>
+                <div class="pull-model-name" id="pullModelName">Загрузка модели...</div>
+                <div class="pull-step-desc" id="pullStepDesc">Инициализация соединения...</div>
+              </div>
+            </div>
+            <div class="pull-metrics-group">
+              <div class="pull-percent" id="pullPercent">0%</div>
+              <div class="pull-bytes" id="pullBytes">0 MB / 0 MB</div>
+            </div>
+          </div>
+          <div class="pull-progress-track">
+            <div class="pull-progress-bar" id="pullProgressBar" style="width: 0%"></div>
+          </div>
+          <div class="pull-note" id="pullNote">Веса сохраняются локально. После скачивания модель сразу доступна в чате и агенте.</div>
+        </div>
+
+        <!-- Quick Custom Pull Input Bar -->
+        <div class="custom-pull-bar">
+          <div class="custom-pull-input-wrapper">
+            <span class="terminal-prefix">$ ollama run</span>
+            <input type="text" id="customModelInput" placeholder="Введите тег любой модели (например: qwen2.5-coder:7b, deepseek-r1:7b, llama3.2:3b)" autocomplete="off">
+          </div>
+          <button class="btn btn-primary" id="customPullBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Скачать
           </button>
         </div>
-      </div>
 
-      <!-- 4 Resource Metric Cards with Mini Canvas Charts -->
-      <div class="metrics-grid">
-        <!-- Card 1: CPU -->
-        <div class="metric-card" id="cpuCard">
-          <div class="metric-header">
-            <div class="metric-title-group">
-              <span class="metric-icon cpu-accent">⚙️</span>
-              <span class="metric-name">Процессор (CPU)</span>
-            </div>
-            <span class="badge badge-cyan" id="cpuCoresBadge">-- Cores</span>
-          </div>
-          <div class="metric-value-row">
-            <div class="metric-main-value" id="cpuVal">0<span class="metric-unit">%</span></div>
-            <div class="metric-subtext" id="cpuSubtext">Загрузка всех ядер</div>
-          </div>
-          <div class="chart-container">
-            <canvas id="cpuChart" height="70"></canvas>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-stat">Пик: <strong id="cpuPeak">0%</strong></span>
-            <span class="metric-stat">Среднее: <strong id="cpuAvg">0%</strong></span>
-          </div>
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+          <button class="tab-btn active" data-category="all">Все модели</button>
+          <button class="tab-btn" data-category="reasoning">🧠 Рассуждения (DeepSeek)</button>
+          <button class="tab-btn" data-category="coding">💻 Программирование (Qwen Coder)</button>
+          <button class="tab-btn" data-category="lightweight">⚡ Ультра-быстрые (&lt; 2GB)</button>
+          <button class="tab-btn" data-category="chat">💬 Чат и тексты</button>
+          <button class="tab-btn" data-category="embeddings">🔍 Поиск и RAG</button>
         </div>
 
-        <!-- Card 2: RAM -->
-        <div class="metric-card" id="ramCard">
-          <div class="metric-header">
-            <div class="metric-title-group">
-              <span class="metric-icon ram-accent">🧠</span>
-              <span class="metric-name">Память (RAM)</span>
-            </div>
-            <span class="badge badge-emerald" id="ramPercentBadge">0%</span>
-          </div>
-          <div class="metric-value-row">
-            <div class="metric-main-value" id="ramVal">0.0 <span class="metric-unit">GB</span></div>
-            <div class="metric-subtext" id="ramSubtext">из 0.0 GB доступно</div>
-          </div>
-          <div class="chart-container">
-            <canvas id="ramChart" height="70"></canvas>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-stat">Свободно: <strong id="ramFree">0 GB</strong></span>
-            <span class="metric-stat">Статус: <strong class="text-emerald" id="ramPressure">Норма</strong></span>
-          </div>
+        <!-- Models Showcase Grid -->
+        <div class="models-grid" id="modelsGrid">
+          <!-- Rendered dynamically by app.js -->
         </div>
+      </section>
 
-        <!-- Card 3: GPU / Metal -->
-        <div class="metric-card" id="gpuCard">
-          <div class="metric-header">
-            <div class="metric-title-group">
-              <span class="metric-icon gpu-accent">⚡</span>
-              <span class="metric-name">GPU & Metal VRAM</span>
-            </div>
-            <span class="badge badge-violet" id="gpuStatusBadge">Apple Metal</span>
-          </div>
-          <div class="metric-value-row">
-            <div class="metric-main-value" id="gpuVal">0<span class="metric-unit">%</span></div>
-            <div class="metric-subtext" id="gpuSubtext">Унифицированный инференс</div>
-          </div>
-          <div class="chart-container">
-            <canvas id="gpuChart" height="70"></canvas>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-stat">Выделено VRAM: <strong id="gpuVram">0 GB</strong></span>
-            <span class="metric-stat">Metal: <strong class="text-violet">Active</strong></span>
-          </div>
-        </div>
-
-        <!-- Card 4: Disk / Models Storage -->
-        <div class="metric-card" id="diskCard">
-          <div class="metric-header">
-            <div class="metric-title-group">
-              <span class="metric-icon disk-accent">💾</span>
-              <span class="metric-name">Хранилище моделей</span>
-            </div>
-            <span class="badge badge-amber" id="diskUsedPercent">0% занято</span>
-          </div>
-          <div class="metric-value-row">
-            <div class="metric-main-value" id="diskFreeVal">0 <span class="metric-unit">GB</span></div>
-            <div class="metric-subtext" id="diskSubtext">свободно под веса моделей</div>
-          </div>
-          <div class="disk-bar-container">
-            <div class="disk-bar-track">
-              <div class="disk-bar-fill" id="diskBarFill" style="width: 25%"></div>
-            </div>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-stat">Всего диск: <strong id="diskTotal">0 GB</strong></span>
-            <span class="metric-stat">Занято: <strong id="diskUsed">0 GB</strong></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Expandable Detailed Master Timeline Chart -->
-      <div class="master-chart-card hidden" id="masterChartSection">
-        <div class="master-chart-header">
-          <div>
-            <h3 class="master-chart-title">Динамическая история потребления ресурсов (60 сек)</h3>
-            <p class="master-chart-sub">Совмещенный график нагрузки CPU и оперативной памяти</p>
-          </div>
-          <div class="master-chart-legend">
-            <span class="legend-item"><span class="legend-box box-cpu"></span> Нагрузка CPU (%)</span>
-            <span class="legend-item"><span class="legend-box box-ram"></span> Память RAM (%)</span>
-            <button class="btn btn-sm btn-subtle" id="clearChartHistoryBtn">Сброс</button>
-          </div>
-        </div>
-        <div class="master-canvas-wrapper">
-          <canvas id="masterChart" height="160"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 2: ONE-CLICK MODEL INSTALLATION & CATALOG -->
-    <section class="section-container">
-      <div class="section-title-row">
-        <div>
-          <h2 class="section-heading">Витрина моделей с установкой в 1 клик</h2>
-          <p class="section-subheading">Выберите оптимизированную открытую нейросеть для локального запуска без облака</p>
-        </div>
-      </div>
-
-      <!-- Active Pull Progress Bar (Appears when downloading) -->
-      <div class="pull-progress-card hidden" id="pullProgressCard">
-        <div class="pull-progress-header">
-          <div class="pull-status-group">
-            <div class="spinner"></div>
-            <div>
-              <div class="pull-model-name" id="pullModelName">Загрузка модели...</div>
-              <div class="pull-step-desc" id="pullStepDesc">Инициализация соединения...</div>
-            </div>
-          </div>
-          <div class="pull-metrics-group">
-            <div class="pull-percent" id="pullPercent">0%</div>
-            <div class="pull-bytes" id="pullBytes">0 MB / 0 MB</div>
-          </div>
-        </div>
-        <div class="pull-progress-track">
-          <div class="pull-progress-bar" id="pullProgressBar" style="width: 0%"></div>
-        </div>
-        <div class="pull-note" id="pullNote">Веса сохраняются локально. После скачивания модель сразу доступна в чате.</div>
-      </div>
-
-      <!-- Quick Custom Pull Input Bar -->
-      <div class="custom-pull-bar">
-        <div class="custom-pull-input-wrapper">
-          <span class="terminal-prefix">$ ollama run</span>
-          <input type="text" id="customModelInput" placeholder="Введите тег любой модели (например: deepseek-r1:1.5b, llama3.2:3b, qwen2.5:7b)" autocomplete="off">
-        </div>
-        <button class="btn btn-primary" id="customPullBtn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Скачать
-        </button>
-      </div>
-
-      <!-- Filter Tabs -->
-      <div class="filter-tabs">
-        <button class="tab-btn active" data-category="all">Все модели</button>
-        <button class="tab-btn" data-category="reasoning">🧠 Рассуждения (DeepSeek)</button>
-        <button class="tab-btn" data-category="lightweight">⚡ Ультра-быстрые (&lt; 2GB)</button>
-        <button class="tab-btn" data-category="coding">💻 Программирование</button>
-        <button class="tab-btn" data-category="chat">💬 Чат и тексты</button>
-        <button class="tab-btn" data-category="embeddings">🔍 Поиск и RAG</button>
-      </div>
-
-      <!-- Models Showcase Grid -->
-      <div class="models-grid" id="modelsGrid">
-        <!-- Rendered dynamically by app.js -->
-      </div>
-    </section>
-
-    <!-- SECTION 3: INSTALLED MODELS & INTERACTIVE PLAYGROUND -->
-    <section class="section-container">
-      <div class="dual-panel-layout">
-        <!-- Left Panel: Installed Models Manager -->
-        <div class="panel-card installed-panel">
+      <!-- SECTION 3: INSTALLED MODELS -->
+      <section class="section-container">
+        <div class="panel-card installed-panel-full">
           <div class="panel-header">
             <div>
-              <h3 class="panel-title">Установленные модели</h3>
-              <p class="panel-sub">Локальные веса, доступные на вашей машине</p>
+              <h3 class="panel-title">Установленные модели на этой машине</h3>
+              <p class="panel-sub">Локальные квантованные веса, готовые к инференсу и работе с агентом</p>
             </div>
             <button class="btn btn-sm btn-subtle" id="refreshInstalledBtn" title="Обновить список">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
               </svg>
+              Обновить
             </button>
           </div>
-
-          <div class="installed-list" id="installedList">
+          <div class="installed-list installed-grid" id="installedList">
             <!-- Rendered by app.js -->
-            <div class="empty-state">
-              <span class="empty-icon">📦</span>
-              <p>Загрузка списка установленных моделей...</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ====================================================================
+         VIEW 2: CLAUDE CODE / OPEN CODEX AUTONOMOUS AGENT STUDIO
+         ==================================================================== -->
+    <main id="view-agent" class="tab-view">
+      <section class="agent-studio-container">
+        <!-- Agent Studio Toolbar -->
+        <div class="agent-toolbar-card">
+          <div class="agent-toolbar-row">
+            <div class="agent-selector-group">
+              <span class="control-label">Роль агента:</span>
+              <select id="agentRoleSelect" class="select-styled">
+                <!-- Filled dynamically by app.js -->
+              </select>
+            </div>
+
+            <div class="agent-selector-group">
+              <span class="control-label">Модель:</span>
+              <select id="agentModelSelect" class="select-styled">
+                <option value="qwen2.5-coder:7b" selected>Qwen 2.5 Coder 7B (Рекомендуется)</option>
+                <option value="deepseek-r1:7b">DeepSeek-R1 7B (Reasoning CoT)</option>
+                <option value="qwen2.5-coder:1.5b">Qwen 2.5 Coder 1.5B (Быстрая)</option>
+                <option value="llama3.2:3b">Llama 3.2 3B</option>
+                <option value="mistral:7b">Mistral 7B Instruct</option>
+              </select>
+            </div>
+
+            <div class="agent-selector-group">
+              <span class="control-label">Макс. шагов:</span>
+              <select id="agentStepsSelect" class="select-styled">
+                <option value="4">4 шага</option>
+                <option value="6" selected>6 шагов</option>
+                <option value="10">10 шагов</option>
+              </select>
+            </div>
+
+            <div class="agent-workspace-pill" id="agentWorkdirBadge">
+              <span class="ws-icon">📁</span>
+              <span class="ws-path" id="agentWorkdirText">/workspace</span>
+            </div>
+          </div>
+
+          <div class="agent-description-bar" id="agentRoleDescription">
+            Автономная разработка: анализ кодовой базы, создание файлов, рефакторинг и запуск тестов.
+          </div>
+        </div>
+
+        <!-- Quick Starter Prompts -->
+        <div class="quick-prompts-row">
+          <span class="quick-prompt-label">Быстрые задачи:</span>
+          <button class="quick-chip" data-prompt="Проверь git статус и найди несохраненные файлы в проекте">
+            🔍 Git статус и аудит
+          </button>
+          <button class="quick-chip" data-prompt="Покажи структуру проекта и перечисли ключевые функции в server.js">
+            📋 Анализ архитектуры
+          </button>
+          <button class="quick-chip" data-prompt="Создай скрипт test_api.js для автоматической проверки эндпоинтов телеметрии">
+            🧪 Создать автотест API
+          </button>
+          <button class="quick-chip" data-prompt="Проверь безопасность server.js и защищенность от выхода за пределы директории">
+            🛡️ Аудит безопасности
+          </button>
+        </div>
+
+        <!-- Agent Execution Stream Feed -->
+        <div class="agent-feed-card" id="agentFeedCard">
+          <div class="feed-header">
+            <div class="feed-header-left">
+              <span class="feed-status-dot" id="agentStatusDot"></span>
+              <span class="feed-status-text" id="agentStatusText">Агент готов к выполнению задачи</span>
+            </div>
+            <div class="feed-header-right">
+              <span class="badge badge-outline" id="agentStepCounter">Шаг: 0 / 0</span>
+              <button class="btn btn-sm btn-subtle" id="clearAgentFeedBtn">Очистить вывод</button>
+            </div>
+          </div>
+
+          <div class="agent-stream-container" id="agentStreamContainer">
+            <!-- Welcome placeholder -->
+            <div class="agent-welcome-placeholder" id="agentWelcomePlaceholder">
+              <div class="welcome-icon">⚡</div>
+              <h3>Claude Code / Open Codex</h3>
+              <p>Локальный автономный агент программирования на базе открытых нейросетей.<br>
+              Агент может читать проект, выполнять команды в терминале, создавать и патчить код с генерацией визуального diff.</p>
             </div>
           </div>
         </div>
 
-        <!-- Right Panel: Interactive Playground / Test Chat -->
-        <div class="panel-card playground-panel">
+        <!-- Agent Input Box -->
+        <div class="agent-input-card">
+          <div class="agent-input-wrapper">
+            <textarea id="agentTaskInput" rows="2" placeholder="Опишите задачу для агента Claude Code... (Shift+Enter — новая строка, Enter — запуск)"></textarea>
+            <div class="agent-input-actions">
+              <button class="btn btn-primary btn-run-agent" id="runAgentBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Запустить агента
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ====================================================================
+         VIEW 3: INTERACTIVE PLAYGROUND (CHAT)
+         ==================================================================== -->
+    <main id="view-playground" class="tab-view">
+      <section class="playground-layout">
+        <div class="panel-card playground-panel-standalone">
           <div class="panel-header">
             <div class="playground-title-area">
-              <h3 class="panel-title">Тестовый чат (Playground)</h3>
+              <h3 class="panel-title">Тестовый чат с открытой моделью</h3>
               <div class="model-selector-row">
-                <label for="chatModelSelect" class="selector-label">Активная модель:</label>
+                <label for="chatModelSelect" class="selector-label">Модель:</label>
                 <select id="chatModelSelect" class="select-styled">
                   <!-- Populated dynamically -->
                 </select>
@@ -289,7 +411,7 @@
             <div class="message assistant">
               <div class="message-avatar">AI</div>
               <div class="message-bubble">
-                Привет! Я локальная нейросеть, работающая прямо на вашем компьютере. Выберите модель из списка или установите новую в 1 клик, задайте вопрос или проверьте генерацию кода!
+                Привет! Я локальная нейросеть, работающая прямо на вашем компьютере. Выберите модель из списка, задайте вопрос или проверьте генерацию кода!
               </div>
             </div>
           </div>
@@ -305,13 +427,13 @@
             </button>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
     <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-content">
-        <div>LocalAI Pulse — Быстрый минималистичный дашборд для локальных моделей</div>
+        <div>LocalAI Pulse — Быстрый минималистичный дашборд и агент разработки Claude Code</div>
         <div class="footer-links">
           <span>100% Приватно • Локальный инференс • Apple Metal / CUDA</span>
         </div>
@@ -327,7 +449,7 @@
         <button class="btn-close" id="closeSetupModalBtn">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-text">Дашборд работает напрямую с локальным рантеймом <strong>Ollama</strong> на порту <code>11434</code>. Все модели скачиваются в оригинальном квантованном формате GGUF и исполняются локально.</p>
+        <p class="modal-text">Дашборд и агент работают напрямую с локальным рантеймом <strong>Ollama</strong> на порту <code>11434</code>. Все модели скачиваются в оригинальном квантованном формате GGUF и исполняются локально.</p>
         
         <h4 class="step-title">1. Быстрая установка Ollama (macOS):</h4>
         <div class="code-copy-box">
@@ -348,7 +470,7 @@
         </div>
 
         <div class="modal-callout">
-          <strong>Примечание:</strong> Если Ollama не запущена, интерфейс автоматически переходит в демонстрационный режим, позволяя протестировать мониторинг ресурсов системы и анимацию интерфейса.
+          <strong>Примечание:</strong> Если Ollama еще не запущена, интерфейс автоматически переходит в демонстрационный режим, позволяя протестировать мониторинг ресурсов системы, агентную систему и анимацию интерфейса.
         </div>
       </div>
       <div class="modal-footer">

@@ -1,6 +1,7 @@
 /**
  * Local AI Hub — Frontend Controller
- * Minimalist design, high-performance Canvas charts & real-time Ollama integration.
+ * Minimalist design, high-performance Canvas charts, real-time Ollama integration,
+ * and autonomous Claude Code / Open Codex Agent Studio.
  */
 
 // State
@@ -12,15 +13,24 @@ const state = {
   masterRamHistory: Array(60).fill(0),
   catalog: [],
   installedModels: [],
+  agentRoles: [],
   activeCategory: 'all',
+  activeView: 'dashboard',
   isPulling: false,
   isGenerating: false,
+  isAgentRunning: false,
   ollamaOnline: false,
-  cpuPeaks: []
+  cpuPeaks: [],
+  currentStepWrapper: null
 };
 
 // DOM Elements
 const elements = {
+  // Navigation Tabs
+  navTabs: document.querySelectorAll('.nav-tab'),
+  tabViews: document.querySelectorAll('.tab-view'),
+
+  // Header Specs & Status
   systemSpecs: document.getElementById('headerSystemSpecs'),
   statusDot: document.getElementById('statusDot'),
   statusLabel: document.getElementById('statusLabel'),
@@ -30,7 +40,7 @@ const elements = {
   modalOkBtn: document.getElementById('modalOkBtn'),
   setupModal: document.getElementById('setupModal'),
 
-  // Metrics
+  // Resource Metrics
   cpuVal: document.getElementById('cpuVal'),
   cpuSubtext: document.getElementById('cpuSubtext'),
   cpuCoresBadge: document.getElementById('cpuCoresBadge'),
@@ -59,7 +69,7 @@ const elements = {
   masterChartSection: document.getElementById('masterChartSection'),
   clearChartHistoryBtn: document.getElementById('clearChartHistoryBtn'),
 
-  // Models
+  // Models Hub
   modelsGrid: document.getElementById('modelsGrid'),
   filterTabs: document.querySelectorAll('.filter-tabs .tab-btn'),
   customModelInput: document.getElementById('customModelInput'),
@@ -72,14 +82,33 @@ const elements = {
   pullProgressBar: document.getElementById('pullProgressBar'),
   pullNote: document.getElementById('pullNote'),
 
-  // Installed & Chat
+  // Installed List
   installedList: document.getElementById('installedList'),
   refreshInstalledBtn: document.getElementById('refreshInstalledBtn'),
+
+  // Playground Chat
   chatModelSelect: document.getElementById('chatModelSelect'),
   tpsBadge: document.getElementById('tpsBadge'),
   chatMessages: document.getElementById('chatMessages'),
   chatInput: document.getElementById('chatInput'),
-  chatSendBtn: document.getElementById('chatSendBtn')
+  chatSendBtn: document.getElementById('chatSendBtn'),
+
+  // Agent Studio
+  agentRoleSelect: document.getElementById('agentRoleSelect'),
+  agentModelSelect: document.getElementById('agentModelSelect'),
+  agentStepsSelect: document.getElementById('agentStepsSelect'),
+  agentWorkdirText: document.getElementById('agentWorkdirText'),
+  agentRoleDescription: document.getElementById('agentRoleDescription'),
+  quickChips: document.querySelectorAll('.quick-chip'),
+  agentFeedCard: document.getElementById('agentFeedCard'),
+  agentStatusDot: document.getElementById('agentStatusDot'),
+  agentStatusText: document.getElementById('agentStatusText'),
+  agentStepCounter: document.getElementById('agentStepCounter'),
+  clearAgentFeedBtn: document.getElementById('clearAgentFeedBtn'),
+  agentStreamContainer: document.getElementById('agentStreamContainer'),
+  agentWelcomePlaceholder: document.getElementById('agentWelcomePlaceholder'),
+  agentTaskInput: document.getElementById('agentTaskInput'),
+  runAgentBtn: document.getElementById('runAgentBtn')
 };
 
 // Canvas references
@@ -107,9 +136,6 @@ function setupHiDPI(canvas) {
   return { ctx, width: rect.width, height: rect.height };
 }
 
-/**
- * Draws smooth cubic Bezier curve through data points
- */
 function drawSmoothCurve(ctx, points, width, height, strokeColor, fillColor, shadowColor) {
   if (points.length < 2) return;
 
@@ -174,6 +200,8 @@ function drawSmoothCurve(ctx, points, width, height, strokeColor, fillColor, sha
 }
 
 function renderMiniCharts() {
+  if (state.activeView !== 'dashboard') return;
+
   // 1. CPU Chart (Cyan)
   if (canvases.cpu) {
     const { ctx, width, height } = setupHiDPI(canvases.cpu);
@@ -209,7 +237,6 @@ function renderMiniCharts() {
     const { ctx, width, height } = setupHiDPI(canvases.master);
     ctx.clearRect(0, 0, width, height);
 
-    // Draw horizontal grid lines (0%, 25%, 50%, 75%, 100%)
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#64748b';
@@ -225,7 +252,6 @@ function renderMiniCharts() {
       ctx.fillText(`${lvl}%`, 4, y + 3);
     }
 
-    // Offset drawing region for master lines
     ctx.save();
     ctx.rect(35, 0, width - 35, height);
     ctx.clip();
@@ -267,8 +293,6 @@ function connectTelemetry() {
   };
 
   eventSource.onerror = () => {
-    console.warn('Telemetry SSE disconnected. Retrying...');
-    // Fallback polling if SSE fails
     setTimeout(fetchMetricsSnapshot, 2000);
   };
 }
@@ -294,14 +318,12 @@ function updateMetricsUI(metrics) {
   elements.cpuVal.innerHTML = `${cpu.percent}<span class="metric-unit">%</span>`;
   elements.cpuCoresBadge.textContent = `${cpu.cores} Cores`;
 
-  // History shift
   state.cpuHistory.push(cpu.percent);
   if (state.cpuHistory.length > 30) state.cpuHistory.shift();
 
   state.masterCpuHistory.push(cpu.percent);
   if (state.masterCpuHistory.length > 60) state.masterCpuHistory.shift();
 
-  // Peak & Avg
   state.cpuPeaks.push(cpu.percent);
   if (state.cpuPeaks.length > 60) state.cpuPeaks.shift();
   const peak = Math.max(...state.cpuPeaks);
@@ -346,7 +368,6 @@ function updateMetricsUI(metrics) {
   elements.diskUsed.textContent = `${disk.usedGb} GB`;
   elements.diskBarFill.style.width = `${disk.percent}%`;
 
-  // Trigger smooth chart redraw
   renderMiniCharts();
 }
 
@@ -362,7 +383,7 @@ function updateOllamaStatusUI(ollama) {
 }
 
 // ============================================================================
-// SYSTEM SPECS LOADER
+// SYSTEM SPECS & WORKSPACE
 // ============================================================================
 
 async function loadSystemSpecs() {
@@ -373,12 +394,24 @@ async function loadSystemSpecs() {
       elements.systemSpecs.textContent = `${specs.cpuModel} • ${specs.cpuCores} Cores • ${specs.totalMemGb} GB RAM`;
     }
   } catch (err) {
-    elements.systemSpecs.textContent = 'Apple M-Series / Core Local AI System';
+    elements.systemSpecs.textContent = 'Apple M-Series / Local AI Core';
+  }
+}
+
+async function loadWorkspaceInfo() {
+  try {
+    const res = await fetch('/api/agent/workdir');
+    if (res.ok) {
+      const data = await res.json();
+      elements.agentWorkdirText.textContent = data.workdir || '/workspace';
+    }
+  } catch (err) {
+    elements.agentWorkdirText.textContent = '/workspace';
   }
 }
 
 // ============================================================================
-// MODEL CATALOG & SHOWCASE
+// MODEL CATALOG & 1-CLICK SHOWCASE
 // ============================================================================
 
 async function loadModelCatalog() {
@@ -465,10 +498,8 @@ function pullModel(modelName) {
   elements.pullBytes.textContent = 'Подготовка...';
   elements.pullProgressBar.style.width = '0%';
 
-  // Scroll smoothly to progress card
   elements.pullProgressCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // Open SSE stream for pull
   const evt = new EventSource(`/api/models/pull?model=${encodeURIComponent(modelName)}`);
 
   evt.onmessage = (e) => {
@@ -513,11 +544,9 @@ function finishPullSuccess(modelName) {
   elements.pullProgressBar.style.width = '100%';
   elements.pullStepDesc.textContent = '✓ Модель успешно установлена и готова к работе!';
 
-  // Refresh lists
   loadInstalledModels();
   renderModelsGrid();
 
-  // Hide progress after 3 seconds
   setTimeout(() => {
     elements.pullProgressCard.classList.add('hidden');
   }, 3500);
@@ -546,7 +575,7 @@ async function loadInstalledModels() {
       const data = await res.json();
       state.installedModels = data.models || [];
       renderInstalledList();
-      populateChatModelSelect();
+      populateModelSelectors();
     }
   } catch (err) {
     console.error('Error loading installed models:', err);
@@ -581,8 +610,11 @@ function renderInstalledList() {
         <div class="installed-details">${sizeStr} • ${quant} • ${param}</div>
       </div>
       <div class="installed-actions">
-        <button class="btn btn-sm btn-subtle btn-select-chat" title="Выбрать для чата" data-model="${escapeHtml(m.name)}">
-          Тест
+        <button class="btn btn-sm btn-subtle btn-select-chat" title="Открыть в чате" data-model="${escapeHtml(m.name)}">
+          Чат
+        </button>
+        <button class="btn btn-sm btn-secondary btn-select-agent" title="Использовать в Claude Code" data-model="${escapeHtml(m.name)}">
+          Агент
         </button>
         <button class="btn btn-sm btn-danger btn-delete-model" title="Удалить с диска" data-model="${escapeHtml(m.name)}">
           Удалить
@@ -590,13 +622,21 @@ function renderInstalledList() {
       </div>
     `;
 
-    // Chat select button
+    // Chat switch
     item.querySelector('.btn-select-chat').addEventListener('click', () => {
+      switchView('playground');
       elements.chatModelSelect.value = m.name;
       elements.chatInput.focus();
     });
 
-    // Delete button
+    // Agent switch
+    item.querySelector('.btn-select-agent').addEventListener('click', () => {
+      switchView('agent');
+      elements.agentModelSelect.value = m.name;
+      elements.agentTaskInput.focus();
+    });
+
+    // Delete
     item.querySelector('.btn-delete-model').addEventListener('click', async () => {
       if (confirm(`Удалить модель ${m.name} с диска?`)) {
         await deleteModel(m.name);
@@ -623,33 +663,296 @@ async function deleteModel(modelName) {
   }
 }
 
-function populateChatModelSelect() {
-  const select = elements.chatModelSelect;
-  const currentVal = select.value;
-  select.innerHTML = '';
+function populateModelSelectors() {
+  const selects = [elements.chatModelSelect, elements.agentModelSelect];
 
-  if (state.installedModels.length === 0) {
-    const opt = document.createElement('option');
-    opt.value = 'llama3.2:1b';
-    opt.textContent = 'llama3.2:1b (демо)';
-    select.appendChild(opt);
-    return;
-  }
+  for (const select of selects) {
+    if (!select) continue;
+    const currentVal = select.value;
+    select.innerHTML = '';
 
-  for (const m of state.installedModels) {
-    const opt = document.createElement('option');
-    opt.value = m.name;
-    opt.textContent = m.name;
-    select.appendChild(opt);
-  }
+    if (state.installedModels.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = 'qwen2.5-coder:7b';
+      opt.textContent = 'qwen2.5-coder:7b (демо)';
+      select.appendChild(opt);
+      continue;
+    }
 
-  if (currentVal && state.installedModels.some(m => m.name === currentVal)) {
-    select.value = currentVal;
+    for (const m of state.installedModels) {
+      const opt = document.createElement('option');
+      opt.value = m.name;
+      opt.textContent = m.name;
+      select.appendChild(opt);
+    }
+
+    if (currentVal && state.installedModels.some(m => m.name === currentVal)) {
+      select.value = currentVal;
+    }
   }
 }
 
 // ============================================================================
-// PLAYGROUND & STREAMING CHAT
+// AGENT STUDIO CONTROLLER (CLAUDE CODE / OPEN CODEX)
+// ============================================================================
+
+async function loadAgentRoles() {
+  try {
+    const res = await fetch('/api/agent/roles');
+    if (res.ok) {
+      state.agentRoles = await res.json();
+      populateAgentRoles();
+    }
+  } catch (err) {
+    console.error('Error loading roles:', err);
+  }
+}
+
+function populateAgentRoles() {
+  const select = elements.agentRoleSelect;
+  select.innerHTML = '';
+
+  for (const role of state.agentRoles) {
+    const opt = document.createElement('option');
+    opt.value = role.id;
+    opt.textContent = `${role.icon} ${role.name}`;
+    select.appendChild(opt);
+  }
+
+  select.addEventListener('change', () => {
+    const selected = state.agentRoles.find(r => r.id === select.value);
+    if (selected) {
+      elements.agentRoleDescription.textContent = selected.description;
+    }
+  });
+
+  if (state.agentRoles.length > 0) {
+    elements.agentRoleDescription.textContent = state.agentRoles[0].description;
+  }
+}
+
+async function runAgent() {
+  const prompt = elements.agentTaskInput.value.trim();
+  if (!prompt || state.isAgentRunning) return;
+
+  const roleId = elements.agentRoleSelect.value || 'coder';
+  const model = elements.agentModelSelect.value || 'qwen2.5-coder:7b';
+  const maxSteps = parseInt(elements.agentStepsSelect.value, 10) || 6;
+
+  state.isAgentRunning = true;
+  elements.runAgentBtn.disabled = true;
+  elements.runAgentBtn.textContent = 'Агент работает...';
+  elements.agentStatusDot.className = 'feed-status-dot active';
+  elements.agentStatusText.textContent = 'Выполнение задачи...';
+  elements.agentStepCounter.textContent = `Шаг: 1 / ${maxSteps}`;
+
+  if (elements.agentWelcomePlaceholder) {
+    elements.agentWelcomePlaceholder.remove();
+  }
+
+  // Create User Prompt Card in Feed
+  const promptCard = document.createElement('div');
+  promptCard.className = 'thought-box';
+  promptCard.style.borderLeftColor = '#38bdf8';
+  promptCard.style.background = 'rgba(6, 182, 212, 0.08)';
+  promptCard.innerHTML = `
+    <div class="thought-header" style="color: #38bdf8;">🎯 Задача пользователя</div>
+    <div>${escapeHtml(prompt)}</div>
+  `;
+  elements.agentStreamContainer.appendChild(promptCard);
+
+  try {
+    const response = await fetch('/api/agent/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, roleId, model, maxSteps })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop();
+
+      for (const rawEvt of events) {
+        if (!rawEvt.trim()) continue;
+
+        let eventType = 'message';
+        let eventData = '';
+
+        const lines = rawEvt.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.replace('event: ', '').trim();
+          } else if (line.startsWith('data: ')) {
+            eventData = line.replace('data: ', '').trim();
+          }
+        }
+
+        if (eventData) {
+          try {
+            const parsed = JSON.parse(eventData);
+            handleAgentEvent(eventType, parsed);
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    }
+  } catch (err) {
+    appendAgentError(err.message);
+  } finally {
+    state.isAgentRunning = false;
+    elements.runAgentBtn.disabled = false;
+    elements.runAgentBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      Запустить агента
+    `;
+    elements.agentStatusDot.className = 'feed-status-dot';
+    elements.agentStatusText.textContent = 'Задача завершена';
+  }
+}
+
+function handleAgentEvent(eventType, data) {
+  const container = elements.agentStreamContainer;
+
+  switch (eventType) {
+    case 'step_start': {
+      elements.agentStepCounter.textContent = `Шаг: ${data.step} / ${data.maxSteps}`;
+      state.currentStepWrapper = document.createElement('div');
+      state.currentStepWrapper.className = 'agent-step-wrapper';
+      state.currentStepWrapper.innerHTML = `
+        <div class="step-indicator-pill">⚡ ШАГ ${data.step} ИЗ ${data.maxSteps}</div>
+      `;
+      container.appendChild(state.currentStepWrapper);
+      break;
+    }
+
+    case 'thought': {
+      const target = state.currentStepWrapper || container;
+      const box = document.createElement('div');
+      box.className = 'thought-box';
+      box.innerHTML = `
+        <div class="thought-header">🧠 Рассуждение агента</div>
+        <div>${formatMarkdown(data.content)}</div>
+      `;
+      target.appendChild(box);
+      break;
+    }
+
+    case 'tool_call': {
+      const target = state.currentStepWrapper || container;
+      const box = document.createElement('div');
+      box.className = 'tool-call-box';
+      box.innerHTML = `
+        <span class="tool-badge">⚙️ ${escapeHtml(data.tool)}</span>
+        <span class="tool-args">${escapeHtml(JSON.stringify(data.args))}</span>
+      `;
+      target.appendChild(box);
+      break;
+    }
+
+    case 'tool_result': {
+      const target = state.currentStepWrapper || container;
+      const res = data.result;
+
+      if (data.tool === 'run_command') {
+        const term = document.createElement('div');
+        term.className = 'terminal-window';
+        term.innerHTML = `
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <span class="terminal-title">Terminal • exit ${res.exitCode}</span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-cmd">$ ${escapeHtml(res.command)}</div>
+            <div>${escapeHtml(res.output)}</div>
+          </div>
+        `;
+        target.appendChild(term);
+      } else if (res.error) {
+        const errBox = document.createElement('div');
+        errBox.className = 'thought-box';
+        errBox.style.borderLeftColor = '#ef4444';
+        errBox.style.background = 'rgba(239, 68, 68, 0.08)';
+        errBox.innerHTML = `<strong>Ошибка инструмента:</strong> ${escapeHtml(res.error)}`;
+        target.appendChild(errBox);
+      } else {
+        const box = document.createElement('div');
+        box.className = 'thought-box';
+        box.style.borderLeftColor = '#10b981';
+        box.innerHTML = `
+          <div class="thought-header" style="color: #10b981;">✓ Результат инструмента (${escapeHtml(data.tool)})</div>
+          <pre><code>${escapeHtml(JSON.stringify(res, null, 2))}</code></pre>
+        `;
+        target.appendChild(box);
+      }
+      break;
+    }
+
+    case 'diff': {
+      const target = state.currentStepWrapper || container;
+      const diffViewer = document.createElement('div');
+      diffViewer.className = 'diff-viewer';
+
+      const lines = data.diff.split('\n').map(l => {
+        if (l.startsWith('+') && !l.startsWith('+++')) {
+          return `<div class="diff-line-add">${escapeHtml(l)}</div>`;
+        } else if (l.startsWith('-') && !l.startsWith('---')) {
+          return `<div class="diff-line-del">${escapeHtml(l)}</div>`;
+        }
+        return `<div>${escapeHtml(l)}</div>`;
+      }).join('');
+
+      diffViewer.innerHTML = `
+        <div class="diff-header">📝 File Diff: ${escapeHtml(data.file)}</div>
+        <div class="diff-lines">${lines}</div>
+      `;
+      target.appendChild(diffViewer);
+      break;
+    }
+
+    case 'final_response': {
+      const finalBox = document.createElement('div');
+      finalBox.className = 'final-response-box';
+      finalBox.innerHTML = formatMarkdown(data.content);
+      container.appendChild(finalBox);
+      break;
+    }
+
+    case 'error': {
+      appendAgentError(data.message);
+      break;
+    }
+  }
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendAgentError(msg) {
+  const box = document.createElement('div');
+  box.className = 'thought-box';
+  box.style.borderLeftColor = '#ef4444';
+  box.style.background = 'rgba(239, 68, 68, 0.08)';
+  box.innerHTML = `<strong>Ошибка исполнения агента:</strong> ${escapeHtml(msg)}`;
+  elements.agentStreamContainer.appendChild(box);
+  elements.agentStreamContainer.scrollTop = elements.agentStreamContainer.scrollHeight;
+}
+
+// ============================================================================
+// PLAYGROUND CHAT CONTROLLER
 // ============================================================================
 
 async function sendChatMessage() {
@@ -659,10 +962,7 @@ async function sendChatMessage() {
   const model = elements.chatModelSelect.value || 'llama3.2:1b';
   elements.chatInput.value = '';
 
-  // Append user message
   appendMessage('user', text);
-
-  // Append assistant message skeleton
   const assistantBubble = appendMessage('assistant', '');
   state.isGenerating = true;
   elements.chatSendBtn.disabled = true;
@@ -675,10 +975,7 @@ async function sendChatMessage() {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        prompt: text
-      })
+      body: JSON.stringify({ model, prompt: text })
     });
 
     const reader = res.body.getReader();
@@ -691,7 +988,7 @@ async function sendChatMessage() {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n\n');
-      buffer = lines.pop(); // Keep partial chunk
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
@@ -703,16 +1000,13 @@ async function sendChatMessage() {
               assistantBubble.innerHTML = formatMarkdown(fullResponse);
               elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 
-              // Calculate live Tokens Per Second
               const elapsedSec = (Date.now() - startTime) / 1000;
               if (elapsedSec > 0.3) {
                 const tps = Math.round((tokenCount / elapsedSec) * 10) / 10;
                 elements.tpsBadge.textContent = `⚡ ${tps} t/s`;
               }
             }
-          } catch (e) {
-            // ignore partial json
-          }
+          } catch (e) {}
         }
       }
     }
@@ -745,37 +1039,51 @@ function appendMessage(role, text) {
   return bubble;
 }
 
-// Simple Markdown Formatter (Bold, Code, Code Blocks)
+// Markdown Formatter
 function formatMarkdown(text) {
   if (!text) return '';
   let out = escapeHtml(text);
 
-  // Fenced Code Blocks ```lang ... ```
   out = out.replace(/```([\s\S]*?)```/g, (match, p1) => {
     return `<pre><code>${p1.trim()}</code></pre>`;
   });
-
-  // Inline Code `code`
   out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Bold **bold**
   out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-  // Italics _italic_
   out = out.replace(/_([^_]+)_/g, '<em>$1</em>');
-
-  // Line breaks
   out = out.replace(/\n/g, '<br>');
 
   return out;
 }
 
 // ============================================================================
-// EVENT LISTENERS & SETUP
+// NAVIGATION & EVENT LISTENERS
 // ============================================================================
 
+function switchView(viewName) {
+  state.activeView = viewName;
+
+  elements.navTabs.forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.view === viewName);
+  });
+
+  elements.tabViews.forEach(view => {
+    view.classList.toggle('active', view.id === `view-${viewName}`);
+  });
+
+  if (viewName === 'dashboard') {
+    renderMiniCharts();
+  }
+}
+
 function initEventListeners() {
-  // Category tabs
+  // Navigation Tabs
+  elements.navTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      switchView(tab.dataset.view);
+    });
+  });
+
+  // Category filter tabs
   elements.filterTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.filterTabs.forEach(t => t.classList.remove('active'));
@@ -795,18 +1103,14 @@ function initEventListeners() {
   });
 
   elements.customModelInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      elements.customPullBtn.click();
-    }
+    if (e.key === 'Enter') elements.customPullBtn.click();
   });
 
   // Master chart toggle
   elements.toggleDetailedChartBtn.addEventListener('click', () => {
     const isHidden = elements.masterChartSection.classList.toggle('hidden');
     elements.toggleDetailedChartBtn.classList.toggle('active', !isHidden);
-    if (!isHidden) {
-      renderMiniCharts();
-    }
+    if (!isHidden) renderMiniCharts();
   });
 
   elements.clearChartHistoryBtn.addEventListener('click', () => {
@@ -815,12 +1119,42 @@ function initEventListeners() {
     renderMiniCharts();
   });
 
-  // Refresh installed button
+  // Refresh installed
   elements.refreshInstalledBtn.addEventListener('click', () => {
     loadInstalledModels();
   });
 
-  // Chat input
+  // Agent triggers
+  elements.runAgentBtn.addEventListener('click', runAgent);
+  elements.agentTaskInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      runAgent();
+    }
+  });
+
+  // Quick Chips
+  elements.quickChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      elements.agentTaskInput.value = chip.dataset.prompt;
+      runAgent();
+    });
+  });
+
+  elements.clearAgentFeedBtn.addEventListener('click', () => {
+    elements.agentStreamContainer.innerHTML = `
+      <div class="agent-welcome-placeholder" id="agentWelcomePlaceholder">
+        <div class="welcome-icon">⚡</div>
+        <h3>Claude Code / Open Codex</h3>
+        <p>Локальный автономный агент программирования на базе открытых нейросетей.<br>
+        Агент может читать проект, выполнять команды в терминале, создавать и патчить код с генерацией визуального diff.</p>
+      </div>
+    `;
+    elements.agentStepCounter.textContent = 'Шаг: 0 / 0';
+    elements.agentStatusText.textContent = 'Агент готов к выполнению задачи';
+  });
+
+  // Chat triggers
   elements.chatSendBtn.addEventListener('click', sendChatMessage);
   elements.chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -829,7 +1163,7 @@ function initEventListeners() {
     }
   });
 
-  // Setup Modal
+  // Modal setup
   const openModal = () => elements.setupModal.classList.remove('hidden');
   const closeModal = () => elements.setupModal.classList.add('hidden');
 
@@ -854,16 +1188,12 @@ function initEventListeners() {
     });
   });
 
-  // Window resize for canvas crispness
   window.addEventListener('resize', () => {
     renderMiniCharts();
   });
 }
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
+// Helpers
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -885,6 +1215,8 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   loadSystemSpecs();
+  loadWorkspaceInfo();
+  loadAgentRoles();
   loadModelCatalog();
   loadInstalledModels();
   connectTelemetry();
