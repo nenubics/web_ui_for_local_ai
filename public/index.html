@@ -330,7 +330,7 @@
               </svg>
               ollama run
             </span>
-            <input type="text" id="customModelInput" placeholder="Введите тег любой модели (например: qwen2.5-coder:7b, deepseek-r1:7b, llama3.2:3b)" autocomplete="off">
+            <input type="text" id="customModelInput" placeholder="Тег модели или Hugging Face репозиторий (например: smollm2:1.7b, hermes3:8b, hf.co/bartowski/...)" autocomplete="off">
           </div>
           <button class="btn btn-primary" id="customPullBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -347,6 +347,14 @@
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
             </svg>
             Все модели
+          </button>
+          <button class="tab-btn" data-category="huggingface">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+              <line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+            </svg>
+            Hugging Face
           </button>
           <button class="tab-btn" data-category="nvidia">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
